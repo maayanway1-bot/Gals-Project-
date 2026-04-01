@@ -1,0 +1,19 @@
+# dependencies
+node_modules
+
+# next.js
+.next/
+out/
+
+# env files
+*.local
+
+# logs
+*.log
+
+# misc
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+*.sw?
