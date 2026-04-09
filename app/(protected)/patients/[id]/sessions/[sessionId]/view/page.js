@@ -85,7 +85,7 @@ export default function ReadOnlyNotePage() {
         {/* Section 1 — הדיווח */}
         <div className="form-section">
           <div className="section-header">
-            <SectionNumber number={1} color="#D4845A" bg="#FFF3EC" />
+            <SectionNumber number={1} color="#2e2a38" bg="#ede8de" />
             <span>הדיווח</span>
           </div>
           <NoteField label="דיווח הלקוח" value={note.client_report} />
@@ -95,7 +95,7 @@ export default function ReadOnlyNotePage() {
         {/* Section 2 — הטיפול */}
         <div className="form-section">
           <div className="section-header">
-            <SectionNumber number={2} color="#C93E2C" bg="#FDEAE6" />
+            <SectionNumber number={2} color="#2e2a38" bg="#ede8de" />
             <span>הטיפול</span>
           </div>
           <NoteField label="מה נעשה" value={note.treatment_done} />
@@ -114,7 +114,7 @@ export default function ReadOnlyNotePage() {
         {/* Section 3 — המשך */}
         <div className="form-section">
           <div className="section-header">
-            <SectionNumber number={3} color="#4A5E4A" bg="#EAF0E6" />
+            <SectionNumber number={3} color="#2e2a38" bg="#ede8de" />
             <span>המשך</span>
           </div>
           <NoteField label="תכנית לטיפול הבא" value={note.treatment_plan} />

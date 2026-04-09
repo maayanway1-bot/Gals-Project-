@@ -70,6 +70,7 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [noteDrawerEvent, setNoteDrawerEvent] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(null);
 
   const isToday = isSameDay(selectedDate, new Date());
 
@@ -127,7 +128,6 @@ export default function TodayPage() {
       const match = patients.find((p) => p.email?.toLowerCase() === att.email);
       if (match) return match;
     }
-    // Try name match
     const nameMatch = patients.find(
       (p) => p.full_name?.toLowerCase() === event.title?.toLowerCase()
     );
@@ -137,25 +137,39 @@ export default function TodayPage() {
       : { id: null, full_name: null, email: null };
   };
 
-  // ── Compute counts ────────────────────────────────────
-  let needsNoteCount = 0;
-  let newClientCount = 0;
+  // ── Enrich events ─────────────────────────────────────
   const enriched = events.map((event) => {
     if (isBreakEvent(event.title)) return { ...event, _type: "break" };
-    // Solo event (no other attendees) → non-actionable block
     if (!event.attendees || event.attendees.length === 0) {
       return { ...event, _type: "block" };
     }
     const patient = matchPatient(event);
     const status = deriveStatus(event, patient, sessionLookup);
-    if (status === "needs-note") needsNoteCount++;
-    if (status === "new-client") newClientCount++;
     return { ...event, _type: "session", _status: status, _patient: patient };
   });
 
+  // ── Counts ────────────────────────────────────────────
+  const sessions = enriched.filter((ev) => ev._type === "session");
+  const intakeCount = sessions.filter((ev) => ev._status === "new-client").length;
+  const noteCount = sessions.filter((ev) => ev._status === "needs-note").length;
+  const doneCount = sessions.filter((ev) => ev._status === "completed").length;
+  const totalSessions = sessions.length;
+  const actionNeededCount = intakeCount + noteCount;
+
+  // ── Filter ────────────────────────────────────────────
+  const filtered = statusFilter
+    ? enriched.filter((ev) => {
+        if (ev._type !== "session") return false;
+        if (statusFilter === "intake") return ev._status === "new-client";
+        if (statusFilter === "note") return ev._status === "needs-note";
+        if (statusFilter === "done") return ev._status === "completed";
+        return true;
+      })
+    : enriched;
+
   // ── Group by period ───────────────────────────────────
   const groups = {};
-  for (const ev of enriched) {
+  for (const ev of filtered) {
     const period = getPeriod(ev.start);
     if (!groups[period]) groups[period] = [];
     groups[period].push(ev);
@@ -173,7 +187,10 @@ export default function TodayPage() {
     d.setDate(d.getDate() - 1);
     setSelectedDate(d);
   };
-  const goToToday = () => setSelectedDate(new Date());
+
+  const toggleFilter = (status) => {
+    setStatusFilter((prev) => (prev === status ? null : status));
+  };
 
   // ── Card handlers ─────────────────────────────────────
   const handleCardClick = (ev) => {
@@ -209,125 +226,171 @@ export default function TodayPage() {
 
   // ── Render ────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      {/* Day Header */}
-      <div className="day-header">
-        <div className="nav-row">
-          <div className="arr" onClick={goToNextDay}>›</div>
-          <div className="date-center">
-            {isToday && <span className="today-tag">היום</span>}
-            <span className="date-main">{formatHebDate(selectedDate)}</span>
+    <div className="today-view">
+      {/* ── Sticky Header (§3) ─────────────────────────── */}
+      <header className="today-header">
+        <div className="today-nav-row">
+          <button className="today-chevron" onClick={goToNextDay} aria-label="יום הבא">
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M1.5 1.5L6.5 7L1.5 12.5" stroke="#2a2a35" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <div className="today-center">
+            {isToday && <span className="today-eyebrow">היום</span>}
+            <div className="today-date">{formatHebDate(selectedDate)}</div>
+            {!loading && totalSessions > 0 && (
+              <div className="today-subtitle">
+                {totalSessions} פגישות{actionNeededCount > 0 ? ` · ${actionNeededCount} דורשות פעולה` : ""}
+              </div>
+            )}
           </div>
-          <div className="arr" onClick={goPrevDay}>‹</div>
+          <button className="today-chevron" onClick={goPrevDay} aria-label="יום קודם">
+            <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+              <path d="M6.5 1.5L1.5 7L6.5 12.5" stroke="#2a2a35" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
         </div>
+      </header>
 
-        <div className="meta-pills">
-          {needsNoteCount > 0 && (
-            <span className="pill pill-note">{needsNoteCount} נדרשים סיכום</span>
-          )}
-          {newClientCount > 0 && (
-            <span className="pill pill-new">{newClientCount} לקוחות חדשים</span>
-          )}
-          {!isToday && (
-            <span className="pill pill-jump" onClick={goToToday}>חזרה להיום ←</span>
-          )}
-        </div>
-      </div>
-
-      {/* Session List */}
-      <div className="session-list">
-        {error && (
-          <div style={{ background: "var(--color-poppy-tint)", border: "1px solid var(--color-poppy-mid)", borderRadius: "var(--radius-md)", padding: "12px", marginBottom: "12px", fontSize: "12px", color: "var(--color-poppy-text)" }}>
-            {error}
+      {/* ── Filter Pills (§4) ──────────────────────────── */}
+      {!loading && (intakeCount > 0 || noteCount > 0 || doneCount > 0) && (
+        <div className="today-pills-wrapper">
+          <div className="today-pills-row">
+            {intakeCount > 0 && (
+              <button
+                className={`today-pill${statusFilter === "intake" ? " today-pill-active today-pill-intake-active" : ""}`}
+                onClick={() => toggleFilter("intake")}
+              >
+                <span className="today-pill-num" style={{ color: "#4a8a78" }}>{intakeCount}</span>
+                <span className="today-pill-label">אינטייק</span>
+              </button>
+            )}
+            {noteCount > 0 && (
+              <button
+                className={`today-pill${statusFilter === "note" ? " today-pill-active today-pill-note-active" : ""}`}
+                onClick={() => toggleFilter("note")}
+              >
+                <span className="today-pill-num" style={{ color: "#c07088" }}>{noteCount}</span>
+                <span className="today-pill-label">סיכום</span>
+              </button>
+            )}
+            {doneCount > 0 && (
+              <button
+                className={`today-pill${statusFilter === "done" ? " today-pill-active today-pill-done-active" : ""}`}
+                onClick={() => toggleFilter("done")}
+              >
+                <span className="today-pill-num" style={{ color: "#6888a0" }}>{doneCount}</span>
+                <span className="today-pill-label">הושלם</span>
+              </button>
+            )}
           </div>
-        )}
+          {statusFilter && (
+            <button className="today-clear-filter" onClick={() => setStatusFilter(null)}>
+              נקה סינון ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Session List ───────────────────────────────── */}
+      <div className="today-session-list">
+        {error && <div className="today-error">{error}</div>}
 
         {loading ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "12px" }}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} style={{ height: "60px", borderRadius: "var(--radius-md)", background: "var(--color-border)", opacity: 0.5 }} />
+              <div key={i} style={{ height: "60px", borderRadius: "16px", background: "#e8e0d4", opacity: 0.5, animation: "pulse 1.5s ease-in-out infinite" }} />
             ))}
           </div>
-        ) : enriched.length === 0 ? (
-          <div style={{ textAlign: "center", color: "var(--color-text-muted)", marginTop: "60px", fontSize: "14px" }}>
+        ) : filtered.length === 0 && !statusFilter ? (
+          <div style={{ textAlign: "center", color: "#b8b0b8", marginTop: "60px", fontSize: "14px", fontFamily: "var(--font-ui)" }}>
             אין תורים ביום זה
+          </div>
+        ) : filtered.length === 0 && statusFilter ? (
+          <div style={{ textAlign: "center", color: "#b8b0b8", marginTop: "60px", fontSize: "14px", fontFamily: "var(--font-ui)" }}>
+            אין פגישות מסוג זה
           </div>
         ) : (
           orderedPeriods.map((period) => (
             <div key={period}>
-              <div className="period-label">{PERIOD_LABELS[period]}</div>
-              {groups[period].map((ev) => (
-                <div className="session-row" key={ev.id}>
-                  <div className="time-col">
-                    <div className="time-value">{formatTime(ev.start)}</div>
-                  </div>
-
-                  {ev._type === "break" ? (
-                    <div className="break-slot">
-                      <span className="break-label">הפסקה</span>
-                    </div>
-                  ) : ev._type === "block" ? (
-                    <div className="block-slot">
-                      <div className="block-title">{ev.title}</div>
-                      <div className="block-meta">{ev.duration} דק׳</div>
-                    </div>
-                  ) : (
-                    <div
-                      className={`session-card ${
-                        ev._status === "completed" ? "card-completed" :
-                        ev._status === "needs-note" ? "card-needs-note" :
-                        "card-new-client"
-                      }`}
-                      style={{ padding: 0, overflow: "hidden" }}
-                    >
-                      {/* Top section — name + badge, always tappable */}
-                      <div
-                        onClick={() => handleCardClick(ev)}
-                        style={{ padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                      >
-                        <span className="patient-name">
-                          {ev._patient?.full_name || ev.title}
-                        </span>
-                        <span className="status-badge">
-                          {ev._status === "completed" ? "הושלם" :
-                           ev._status === "needs-note" ? "נדרש סיכום" :
-                           "לקוח חדש"}
-                        </span>
+              <div className="today-period-label">{PERIOD_LABELS[period]}</div>
+              {groups[period].map((ev) => {
+                /* ── Break ─────────────────────────────── */
+                if (ev._type === "break") {
+                  return (
+                    <div className="today-card today-card-break" key={ev.id}>
+                      <div className="today-card-row">
+                        <div className="today-card-time">{formatTime(ev.start)}</div>
+                        <div className="today-card-divider" />
+                        <div className="today-card-content">
+                          <div className="today-card-name">הפסקה</div>
+                        </div>
                       </div>
-
-                      {/* Bottom strip — only for actionable states */}
-                      {ev._status === "needs-note" && (
-                        <div
-                          onClick={(e) => { e.stopPropagation(); handleWriteNote(ev); }}
-                          style={{ borderTop: "0.5px solid #F5C4A8", background: "#FFFFFF", padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#C93E2C", fontSize: "11px", fontWeight: 500 }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
-                            </svg>
-                            <span>כתוב סיכום טיפול</span>
-                          </div>
-                          <span style={{ color: "rgba(197, 62, 44, 0.6)", fontSize: "14px" }}>←</span>
-                        </div>
-                      )}
-                      {ev._status === "new-client" && (
-                        <div
-                          onClick={(e) => { e.stopPropagation(); handleStartIntake(ev); }}
-                          style={{ borderTop: "0.5px solid #EDEAE4", background: "#FFFFFF", padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#282B30", fontSize: "11px", fontWeight: 500 }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
-                            </svg>
-                            <span>התחל אינטייק</span>
-                          </div>
-                          <span style={{ color: "rgba(40, 43, 48, 0.6)", fontSize: "14px" }}>←</span>
-                        </div>
-                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                }
+                /* ── Block (solo event) ────────────────── */
+                if (ev._type === "block") {
+                  return (
+                    <div className="today-card today-card-block" key={ev.id}>
+                      <div className="today-card-row">
+                        <div className="today-card-time">{formatTime(ev.start)}</div>
+                        <div className="today-card-divider" />
+                        <div className="today-card-content">
+                          <div className="today-card-name">{ev.title}</div>
+                          <div className="today-card-meta">{ev.duration} דק׳</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                /* ── Completed Session (§6) ────────────── */
+                if (ev._status === "completed") {
+                  return (
+                    <div
+                      className="today-card-done"
+                      key={ev.id}
+                      onClick={() => handleCardClick(ev)}
+                      style={{ cursor: ev._patient?.id ? "pointer" : "default" }}
+                    >
+                      <div className="today-done-time">{formatTime(ev.start)}</div>
+                      <div className="today-done-divider" />
+                      <div className="today-done-body">
+                        <div className="today-done-name">{ev._patient?.full_name || ev.title}</div>
+                        <div className="today-done-meta">הושלם</div>
+                      </div>
+                      <div className="today-done-check">
+                        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+                          <path d="M1 5L4.5 8.5L11 1.5" stroke="#4a9070" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                }
+                /* ── Actionable Session (§5) ───────────── */
+                return (
+                  <div className="today-card" key={ev.id}>
+                    <div className="today-card-row" onClick={() => handleCardClick(ev)} style={{ cursor: "pointer" }}>
+                      <div className="today-card-time">{formatTime(ev.start)}</div>
+                      <div className="today-card-divider" />
+                      <div className="today-card-content">
+                        <div className="today-card-name">{ev._patient?.full_name || ev.title}</div>
+                        <div className="today-card-meta">{ev.duration} דק׳</div>
+                      </div>
+                    </div>
+                    {ev._status === "new-client" && (
+                      <button className="today-cta today-cta-intake" onClick={(e) => { e.stopPropagation(); handleStartIntake(ev); }}>
+                        התחל אינטייק
+                      </button>
+                    )}
+                    {ev._status === "needs-note" && (
+                      <button className="today-cta today-cta-note" onClick={(e) => { e.stopPropagation(); handleWriteNote(ev); }}>
+                        כתוב סיכום
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))
         )}

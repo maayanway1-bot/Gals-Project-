@@ -133,11 +133,11 @@ export default function FullViewPage() {
   }
 
   if (loading || !client) {
-    return <div style={{ padding: "16px", background: "#FFFFFF", minHeight: "100vh" }} />;
+    return <div style={{ padding: "16px", background: "#f5f0e8", minHeight: "100vh" }} />;
   }
 
   return (
-    <div style={{ background: "#FFFFFF", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "#f5f0e8", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <TopBar
         title="תיק מלא"
         onBack={() => router.push(`/patients/${id}`)}

@@ -104,7 +104,7 @@ function IntakeForm() {
         photo_urls: photoUrls.length > 0 ? photoUrls : null,
       });
       if (noteError) throw noteError;
-      router.push("/today");
+      window.location.href = "/today";
     } catch (err) {
       setSaving(false);
       alert("שגיאה בשמירה: " + err.message);
@@ -200,7 +200,7 @@ function IntakeForm() {
         <div style={{ padding: "16px 20px" }}>
           <div
             onClick={isValid && !saving ? handleSave : undefined}
-            style={{ background: "#FA523C", color: "#FFFFFF", fontSize: "14px", fontWeight: 500, borderRadius: "100px", padding: "13px 0", width: "100%", display: "block", textAlign: "center", cursor: isValid && !saving ? "pointer" : "default", opacity: isValid && !saving ? 1 : 0.4, pointerEvents: isValid && !saving ? "auto" : "none", fontFamily: "var(--font-ui)" }}
+            style={{ background: "#eef6f3", color: "#3a7060", border: "0.5px solid #a8d0c8", fontSize: "14px", fontWeight: 500, borderRadius: "12px", padding: "13px 0", width: "100%", display: "block", textAlign: "center", cursor: isValid && !saving ? "pointer" : "default", opacity: isValid && !saving ? 1 : 0.4, pointerEvents: isValid && !saving ? "auto" : "none", fontFamily: "var(--font-ui)" }}
           >
             {saving ? "שומר..." : "צור כרטיס לקוח ושמור סיכום"}
           </div>

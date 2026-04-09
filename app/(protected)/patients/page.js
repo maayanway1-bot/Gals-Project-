@@ -5,9 +5,41 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
 
+function LogoutButton() {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/login");
+  };
+
+  if (confirming) {
+    return (
+      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <button onClick={handleLogout} style={{ fontFamily: "var(--font-ui)", fontSize: "11px", fontWeight: 500, color: "#a05870", background: "#f9f0f3", border: "0.5px solid #e0b8c8", borderRadius: "8px", padding: "5px 12px", cursor: "pointer" }}>
+          אישור
+        </button>
+        <button onClick={() => setConfirming(false)} style={{ fontFamily: "var(--font-ui)", fontSize: "11px", color: "#a8a0a8", background: "none", border: "none", cursor: "pointer", padding: "5px" }}>
+          ביטול
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => setConfirming(true)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", color: "#a8a0a8", display: "flex", alignItems: "center", touchAction: "manipulation" }} aria-label="התנתק">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+      </svg>
+    </button>
+  );
+}
+
 const AVATAR_COLORS = [
-  { bg: "#FFF3EC", color: "#D4845A" },
-  { bg: "#EAF0E6", color: "#4A5E4A" },
+  { bg: "#f5e8ee", color: "#a05870" },
+  { bg: "#eef6f3", color: "#3a7060" },
 ];
 
 function getInitials(name) {
@@ -81,8 +113,9 @@ export default function PatientsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, background: "var(--color-bg)" }}>
       {/* Title */}
-      <div style={{ padding: "12px 16px 0", fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--color-text-primary)" }}>
-        לקוחות
+      <div style={{ padding: "12px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <LogoutButton />
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "26px", fontWeight: 300, color: "#2e2a38" }}>לקוחות</span>
       </div>
 
       {/* Search */}

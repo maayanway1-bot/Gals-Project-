@@ -190,7 +190,7 @@ export default function ClientProfilePage() {
                   </span>
                   <StatusBadge status="upcoming" />
                 </div>
-                <div style={{ fontSize: "11px", color: "var(--color-peach-deep)", marginTop: "2px" }}>
+                <div style={{ fontSize: "11px", color: "#3a7060", marginTop: "2px" }}>
                   {daysUntil(ev.start)}{ev.duration ? ` · ${ev.duration} דק׳` : ""}
                 </div>
               </div>
@@ -243,15 +243,15 @@ export default function ClientProfilePage() {
                     {status === "needs-note" && (
                       <div
                         onClick={() => setNoteDrawerSession(s)}
-                        style={{ borderTop: "0.5px solid #F5C4A8", background: "#FFFFFF", padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                        style={{ borderTop: "0.5px solid #e0b8c8", background: "#f9f0f3", padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", borderRadius: "0 0 16px 16px" }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#C93E2C", fontSize: "11px", fontWeight: 500 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#a05870", fontSize: "11px", fontWeight: 500 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
                           </svg>
                           <span>כתוב סיכום טיפול</span>
                         </div>
-                        <span style={{ color: "rgba(197, 62, 44, 0.6)", fontSize: "14px" }}>←</span>
+                        <span style={{ color: "rgba(160, 88, 112, 0.6)", fontSize: "14px" }}>←</span>
                       </div>
                     )}
                   </div>
@@ -290,7 +290,7 @@ export default function ClientProfilePage() {
         onClose={() => {
           setNoteDrawerSession(null);
           // Re-fetch past sessions to update status
-          const supabase2 = supabaseRef.current;
+          const supabase2 = supabase;
           supabase2
             .from("sessions")
             .select("id, date, session_number, duration, google_event_id, notes(id, note_type, created_at)", { count: "exact" })
@@ -306,6 +306,7 @@ export default function ClientProfilePage() {
         event={noteDrawerSession ? { id: noteDrawerSession.google_event_id, start: noteDrawerSession.date } : null}
         patient={client}
         sessionNumber={noteDrawerSession?.number}
+        existingSessionId={noteDrawerSession?.id}
       />
     </div>
   );

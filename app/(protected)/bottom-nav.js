@@ -46,13 +46,24 @@ export default function BottomNav() {
           tab.href === "/today"
             ? pathname === "/today" || pathname === "/"
             : pathname.startsWith(tab.href);
+        const disabled = tab.id === "notifications";
+        if (disabled) {
+          return (
+            <div key={tab.id} className="nav-tab" style={{ opacity: 0.4, cursor: "default" }}>
+              <div style={{ color: "#a8a0a8", position: "relative" }}>
+                {tab.icon}
+              </div>
+              <span className="nav-tab-label">{tab.label}</span>
+            </div>
+          );
+        }
         return (
           <Link
             key={tab.id}
             href={tab.href}
             className={`nav-tab ${active ? "active" : ""}`}
           >
-            <div style={{ color: active ? "var(--color-poppy)" : "var(--color-text-inactive)", position: "relative" }}>
+            <div style={{ color: active ? "#c07088" : "#a8a0a8", position: "relative" }}>
               {tab.icon}
             </div>
             <span className="nav-tab-label">{tab.label}</span>

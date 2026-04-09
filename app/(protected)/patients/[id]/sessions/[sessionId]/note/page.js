@@ -92,35 +92,35 @@ export default function NoteEditorPage() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950">
-        <p className="text-slate-500">Loading...</p>
+      <div style={{ position: "fixed", inset: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "#f5f0e8" }}>
+        <p style={{ color: "#b8b0b8" }}>טוען...</p>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-slate-950">
+    <div style={{ position: "fixed", inset: 0, zIndex: 40, display: "flex", flexDirection: "column", background: "#f5f0e8" }}>
       {/* Toolbar */}
-      <div className="flex h-14 items-center justify-between border-b border-slate-800 px-4">
+      <div style={{ display: "flex", height: "52px", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid #e0d8cc", padding: "0 16px", background: "#f5f0e8" }}>
         <button
           onClick={() => router.back()}
-          className="text-sm text-slate-400 active:text-white transition-colors"
+          style={{ fontSize: "13px", fontWeight: 500, color: "#c07088", background: "none", border: "none", cursor: "pointer", fontFamily: "var(--font-ui)" }}
         >
-          Cancel
+          ביטול
         </button>
-        <span className="text-sm text-slate-500">
+        <span style={{ fontSize: "11px", color: "#b8b0b8", fontFamily: "var(--font-ui)" }}>
           {existingNoteId
-            ? "Edit Note"
+            ? "עריכת סיכום"
             : lastSaved
-              ? `Draft saved ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : "New Note"}
+              ? `טיוטה נשמרה ${lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : "סיכום חדש"}
         </span>
         <button
           onClick={handleSave}
           disabled={saving || !content.trim()}
-          className="text-sm font-semibold text-primary-light disabled:opacity-40 active:opacity-70 transition-opacity"
+          style={{ fontSize: "13px", fontWeight: 500, color: "#3a7060", background: "#eef6f3", border: "0.5px solid #a8d0c8", borderRadius: "8px", padding: "5px 14px", cursor: saving || !content.trim() ? "default" : "pointer", opacity: saving || !content.trim() ? 0.4 : 1, fontFamily: "var(--font-ui)" }}
         >
-          {saving ? "Saving..." : "Save"}
+          {saving ? "שומר..." : "שמור"}
         </button>
       </div>
 
@@ -130,8 +130,8 @@ export default function NoteEditorPage() {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         dir="auto"
-        placeholder="Write your note..."
-        className="flex-1 resize-none bg-transparent p-4 text-lg leading-relaxed text-white placeholder-slate-600 focus:outline-none"
+        placeholder="כתוב את הסיכום כאן..."
+        style={{ flex: 1, resize: "none", background: "#fdfaf6", margin: "12px", borderRadius: "16px", border: "0.5px solid #e8e0d4", padding: "16px", fontSize: "13px", lineHeight: 1.7, color: "#2e2a38", fontFamily: "var(--font-ui)", outline: "none" }}
       />
     </div>
   );

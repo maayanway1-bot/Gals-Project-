@@ -28,7 +28,7 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-export default function SessionNoteDrawer({ open, onClose, event, patient, sessionNumber }) {
+export default function SessionNoteDrawer({ open, onClose, event, patient, sessionNumber, existingSessionId }) {
   const supabase = createClient();
 
   const [clientReport, setClientReport] = useState("");
@@ -58,13 +58,19 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
 
       // Check if session already exists for this event
       async function loadExisting() {
-        if (!event.id || !patient?.id) return;
+        if (!existingSessionId && (!event.id || !patient?.id)) return;
 
-        const { data: existingSession } = await supabase
+        let query = supabase
           .from("sessions")
-          .select("id, notes(id, client_report, tongue_and_pulse, treatment_done, treatment_plan, homework, formulas, photo_urls)")
-          .eq("google_event_id", event.id)
-          .maybeSingle();
+          .select("id, notes(id, client_report, tongue_and_pulse, treatment_done, treatment_plan, homework, formulas, photo_urls)");
+
+        if (existingSessionId) {
+          query = query.eq("id", existingSessionId);
+        } else {
+          query = query.eq("google_event_id", event.id);
+        }
+
+        const { data: existingSession } = await query.maybeSingle();
 
         if (existingSession) {
           setSessionId(existingSession.id);
@@ -82,7 +88,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
       }
       loadExisting();
     }
-  }, [open, event?.id, patient?.id]);
+  }, [open, event?.id, patient?.id, existingSessionId]);
 
   const hasAnyText = [clientReport, tongueAndPulse, treatmentDone, treatmentPlan, homework].some(
     (f) => f.trim().length > 0
@@ -259,8 +265,8 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
             <div
               onClick={hasAnyText && !saving ? handleSave : undefined}
               style={{
-                background: "#FA523C", color: "#FFFFFF", fontSize: "14px", fontWeight: 500,
-                borderRadius: "100px", padding: "13px 0", width: "100%", display: "block",
+                background: "#eef6f3", color: "#3a7060", border: "0.5px solid #a8d0c8", fontSize: "14px", fontWeight: 500,
+                borderRadius: "12px", padding: "13px 0", width: "100%", display: "block",
                 textAlign: "center", cursor: hasAnyText && !saving ? "pointer" : "default",
                 opacity: hasAnyText && !saving ? 1 : 0.3,
                 pointerEvents: hasAnyText && !saving ? "auto" : "none",

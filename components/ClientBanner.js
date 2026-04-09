@@ -2,25 +2,25 @@
 
 const BANNER_VARIANTS = {
   intake: {
-    bg: "#FFF3EC",
-    border: "#F5D0B4",
-    avatarBg: "#FFC6AD",
-    avatarColor: "#A05020",
-    labelColor: "#D4845A",
+    bg: "#f5e8ee",
+    border: "#e0b8c8",
+    avatarBg: "#f5e8ee",
+    avatarColor: "#a05870",
+    labelColor: "#a05870",
   },
   session: {
-    bg: "#FCEEE4",
-    border: "#EDD8CC",
-    avatarBg: "#F5C4A8",
-    avatarColor: "#A05020",
-    labelColor: "#C07848",
+    bg: "#f5e8ee",
+    border: "#e0b8c8",
+    avatarBg: "#f5e8ee",
+    avatarColor: "#a05870",
+    labelColor: "#a05870",
   },
   profile: {
-    bg: "#FCEEE4",
-    border: "#EDD8CC",
-    avatarBg: "#F5C4A8",
-    avatarColor: "#A05020",
-    labelColor: "#C07848",
+    bg: "#f5e8ee",
+    border: "#e0b8c8",
+    avatarBg: "#f5e8ee",
+    avatarColor: "#a05870",
+    labelColor: "#a05870",
   },
 };
 

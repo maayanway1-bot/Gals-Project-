@@ -5,6 +5,8 @@
    Import this file once at the root of the app.
    ============================================================ */
 
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/300.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/300-italic.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/400.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/600.css');
 @import url('https://cdn.jsdelivr.net/npm/@fontsource/rubik/400.css');
@@ -21,48 +23,53 @@
 
 
   /* ── App background & surfaces ─────────────────────────── */
-  --color-bg:             #FAF9F6;  /* Feather White — page bg   */
-  --color-surface:        #FFFFFF;  /* Cards, nav bar, modals    */
-  --color-border:         #EDEAE4;  /* Default dividers/borders  */
-  --color-border-strong:  #D8D4CE;  /* Hover / pressed borders   */
+  --color-bg:             #f5f0e8;  /* Parchment — page bg       */
+  --color-surface:        #fdfaf6;  /* Cards, panels              */
+  --color-surface-alt:    #ede8de;  /* Nested surfaces, pills     */
+  --color-border:         #e8e0d4;  /* Card borders               */
+  --color-border-strong:  #d8d0c0;  /* Hover / pressed borders    */
+  --color-border-nav:     #e0d8cc;  /* Header / footer dividers   */
 
 
-  /* ── Poppy — primary action & "needs note" state ───────── */
-  --color-poppy:          #FA523C;  /* Primary CTA, action btns  */
-  --color-poppy-deep:     #C93E2C;  /* Hover/pressed state       */
-  --color-poppy-tint:     #FDEAE6;  /* Needs-note card bg        */
-  --color-poppy-mid:      #F5C4B4;  /* Needs-note card border    */
-  --color-poppy-soft:     #F5B8A8;  /* Needs-note badge bg       */
-  --color-poppy-text:     #B03020;  /* Needs-note badge text     */
+  /* ── Primary action / nav active ───────────────────────── */
+  --color-primary:        #c07088;
+
+  /* ── Poppy (mapped to note/needs-note state) ───────────── */
+  --color-poppy:          #c07088;  /* Primary action, links      */
+  --color-poppy-deep:     #a05870;  /* Hover/pressed              */
+  --color-poppy-tint:     #f9f0f3;  /* Needs-note card bg         */
+  --color-poppy-mid:      #e0b8c8;  /* Needs-note card border     */
+  --color-poppy-soft:     #f9f0f3;  /* Needs-note badge bg        */
+  --color-poppy-text:     #a05870;  /* Needs-note badge text      */
 
 
-  /* ── Peach — warm accent ───────────────────────────────── */
-  --color-peach:          #FFC6AD;
-  --color-peach-deep:     #D4845A;
-  --color-peach-tint:     #FFF3EC;
+  /* ── Peach / Rose — warm accent, avatar family A ──────── */
+  --color-peach:          #f5e8ee;
+  --color-peach-deep:     #a05870;
+  --color-peach-tint:     #f5e8ee;
 
 
-  /* ── Sage — "completed" state & secondary accents ──────── */
-  --color-sage:           #D5DBCC;
-  --color-sage-deep:      #7A8E78;
-  --color-sage-deeper:    #4A5E4A;
-  --color-sage-tint:      #EAF0E6;  /* Completed card bg         */
-  --color-sage-mid:       #CFDDBE;  /* Completed card border     */
-  --color-sage-soft:      #C4D8AE;  /* Completed badge bg        */
-  --color-sage-text:      #3D5630;  /* Completed badge/av text   */
+  /* ── Sage / Teal — completed state, avatar family B ────── */
+  --color-sage:           #c8dfd4;
+  --color-sage-deep:      #3a7060;
+  --color-sage-deeper:    #3a7060;
+  --color-sage-tint:      #f4faf7;  /* Completed card bg          */
+  --color-sage-mid:       #c8dfd4;  /* Completed card border      */
+  --color-sage-soft:      #eef6f3;  /* Completed badge bg         */
+  --color-sage-text:      #3a7060;  /* Completed badge/av text    */
 
 
-  /* ── Ink — "new client" state & headings ───────────────── */
-  --color-ink:            #282B30;  /* Headings, new-client      */
-  --color-ink-surface:    #F2F0EE;  /* New-client card bg        */
-  --color-ink-muted:      #D8D4CE;  /* New-client avatar bg      */
+  /* ── Ink — headings ────────────────────────────────────── */
+  --color-ink:            #2e2a38;  /* Headings, strong text      */
+  --color-ink-surface:    #ede8de;  /* Subtle nested surfaces     */
+  --color-ink-muted:      #d8d0c0;  /* Muted accents              */
 
 
   /* ── Neutral text ──────────────────────────────────────── */
-  --color-text-primary:   #282B30;  /* Headings, patient names   */
-  --color-text-secondary: #8A8680;  /* Stone — complaint, meta   */
-  --color-text-muted:     #A8A4A0;  /* Break text, placeholders  */
-  --color-text-inactive:  #B8B4B0;  /* Nav icons inactive        */
+  --color-text-primary:   #2e2a38;  /* Headings, patient names    */
+  --color-text-secondary: #a8a0a8;  /* Meta text, sub-lines       */
+  --color-text-muted:     #b8b0b8;  /* Break text, placeholders   */
+  --color-text-inactive:  #a8a0a8;  /* Nav icons inactive          */
 
 
   /* ── Border radius ─────────────────────────────────────── */

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "/opt/homebrew/bin/node",
+      "args": ["/Users/maayanwaynberg/Test project maayan/gal-project/node_modules/@playwright/mcp/cli.js"]
+    }
+  }
+}
