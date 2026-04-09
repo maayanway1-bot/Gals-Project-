@@ -1,275 +1,312 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
+import ClientBanner from "@/components/ClientBanner";
+import StatusBadge from "@/components/StatusBadge";
+import TopBar from "@/components/TopBar";
+import SessionNoteDrawer from "@/components/SessionNoteDrawer";
 
-export default function PatientProfilePage() {
+const PAGE_SIZE = 10;
+
+function getInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0];
+  return parts[0][0] + parts[parts.length - 1][0];
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function formatMonthYear(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function daysUntil(dateStr) {
+  const days = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days <= 0) return "היום";
+  if (days === 1) return "מחר";
+  return `בעוד ${days} ימים`;
+}
+
+export default function ClientProfilePage() {
   const { id } = useParams();
-  const [patient, setPatient] = useState(null);
-  const [sessions, setSessions] = useState([]);
+  const router = useRouter();
+  const supabase = useRef(createClient()).current;
+
+  // Client data (fast — Supabase only)
+  const [client, setClient] = useState(null);
+  const [sessionCount, setSessionCount] = useState(0);
+  const [clientReady, setClientReady] = useState(false);
+
+  // Upcoming from Google Calendar (slow — loaded in background)
   const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [pastExpanded, setPastExpanded] = useState(false);
+  const [upcomingLoading, setUpcomingLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    const supabase = createClient();
+  // Past sessions — simple load (not paginated until we have enough data to need it)
+  const [pastSessions, setPastSessions] = useState([]);
+  const [pastLoading, setPastLoading] = useState(true);
 
-    // Fetch patient + sessions with notes in parallel
-    const [{ data: pat }, { data: sess }] = await Promise.all([
-      supabase.from("patients").select("*").eq("id", id).single(),
-      supabase
-        .from("sessions")
-        .select("id, session_number, date, duration, google_event_id, notes(id, content)")
-        .eq("patient_id", id)
-        .order("date", { ascending: false }),
-    ]);
+  // Note drawer
+  const [noteDrawerSession, setNoteDrawerSession] = useState(null);
 
-    setPatient(pat);
-    setSessions(sess || []);
+  // Step 1: Load client + past sessions immediately (fast)
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const [{ data: pat }, { data: sess, count }] = await Promise.all([
+        supabase.from("patients").select("*").eq("id", id).single(),
+        supabase
+          .from("sessions")
+          .select("id, date, session_number, duration, google_event_id, notes(id, note_type, created_at)", { count: "exact" })
+          .eq("patient_id", id)
+          .lte("date", new Date().toISOString())
+          .order("date", { ascending: false })
+          .range(0, 49),
+      ]);
 
-    // Fetch upcoming calendar events for this patient
-    if (pat?.email) {
-      try {
-        const res = await fetch(
-          `/api/calendar/patient?email=${encodeURIComponent(pat.email)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setUpcomingEvents(data.events || []);
-        }
-      } catch {
-        // Calendar fetch failed silently — upcoming section will be empty
-      }
+      if (cancelled) return;
+      setClient(pat);
+      setSessionCount(count || 0);
+      setPastSessions(sess || []);
+      setPastLoading(false);
+      setClientReady(true);
     }
-
-    setLoading(false);
+    load();
+    return () => { cancelled = true; };
   }, [id]);
 
+  // Step 2: Load upcoming from calendar in background (slow, non-blocking)
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!client?.email) return;
+    let cancelled = false;
+    setUpcomingLoading(true);
+    fetch(`/api/calendar/patient?email=${encodeURIComponent(client.email)}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!cancelled) {
+          if (data?.events) setUpcomingEvents(data.events);
+          setUpcomingLoading(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setUpcomingLoading(false); });
+    return () => { cancelled = true; };
+  }, [client?.email]);
 
-  if (loading || !patient) {
+  if (!clientReady || !client) {
     return (
-      <div className="p-4 space-y-3">
-        <div className="h-24 animate-pulse rounded-xl bg-slate-800" />
-        <div className="h-8 animate-pulse rounded-xl bg-slate-800" />
-        <div className="h-16 animate-pulse rounded-xl bg-slate-800" />
+      <div style={{ padding: "16px" }}>
+        <div style={{ height: "80px", borderRadius: "var(--radius-md)", background: "var(--color-border)", opacity: 0.4 }} />
       </div>
     );
   }
 
-  const pastSessions = sessions.filter(
-    (s) => new Date(s.date) <= new Date()
-  );
-  const pastCount = pastSessions.length;
+  // Cap upcoming at 3
+  const upcoming = upcomingEvents.slice(0, 3);
 
-  // Filter out calendar events that already have a session in DB (by google_event_id)
-  const existingEventIds = new Set(
-    sessions.map((s) => s.google_event_id).filter(Boolean)
-  );
-  const calendarEvents = upcomingEvents.filter(
-    (e) => !existingEventIds.has(e.id)
-  );
-
-  // Split calendar events into today and upcoming
-  const now = new Date();
-  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const todayEvents = calendarEvents.filter(
-    (e) => new Date(e.start) < startOfTomorrow
-  );
-  const futureEvents = calendarEvents.filter(
-    (e) => new Date(e.start) >= startOfTomorrow
-  );
-
-  const formatDate = (dateStr) =>
-    new Date(dateStr).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-
-  const formatTime = (dateStr) => {
-    if (!dateStr) return "";
-    return new Date(dateStr).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  // Number past sessions for display
+  const numberedPast = pastSessions.map((s, i) => ({
+    ...s,
+    number: sessionCount - i,
+  }));
 
   return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-        <h2 className="text-xl font-semibold text-white">
-          {patient.full_name}
-        </h2>
-        {patient.chief_complaint && (
-          <p className="mt-1 text-sm text-slate-400" dir="auto">
-            {patient.chief_complaint}
-          </p>
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, background: "var(--color-bg)" }}>
+      <TopBar
+        title=""
+        onBack={() => router.push("/patients")}
+        backLabel="לקוחות"
+        rightLabel=""
+        onRight={() => {}}
+        rightDisabled
+      />
+
+      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "80px" }}>
+        <ClientBanner
+          variant="profile"
+          clientName={client.full_name}
+          sessionLabel={`${sessionCount} טיפולים · מ${formatMonthYear(client.created_at)}`}
+          avatarContent={getInitials(client.full_name)}
+          tag={sessionCount > 0 ? "פעילה" : "לא פעילה"}
+          tagStyle="sage"
+        />
+
+        {/* פרטי המטופל/ת */}
+        <div className="patient-details-card">
+          <div className="pd-header">
+            <span className="pd-title">פרטי המטופל/ת</span>
+            <span className="pd-date">{formatDate(client.created_at)}</span>
+          </div>
+          <div className="pd-grid">
+            <div>
+              <div className="pd-field-label">גיל</div>
+              <div className="pd-field-val">{client.age || "—"}</div>
+            </div>
+            <div>
+              <div className="pd-field-label">מגדר</div>
+              <div className="pd-field-val">{client.gender === "female" ? "אישה" : client.gender === "male" ? "גבר" : "—"}</div>
+            </div>
+            <div>
+              <div className="pd-field-label">טלפון</div>
+              <div className="pd-field-val" dir="ltr">{client.phone || "—"}</div>
+            </div>
+            <div>
+              <div className="pd-field-label">אימייל</div>
+              <div className="pd-field-val" dir="ltr" style={{ fontSize: "10px" }}>{client.email || "—"}</div>
+            </div>
+          </div>
+          {client.chief_complaint && (
+            <div className="pd-complaint">
+              <span className="pd-complaint-label">תלונה עיקרית</span>
+              <span className="pd-complaint-val">{client.chief_complaint}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Upcoming sessions — max 3 */}
+        {upcomingLoading && (
+          <div style={{ padding: "12px 14px 0" }}>
+            <div className="section-title" style={{ marginBottom: "8px" }}>עתידי</div>
+            {[...Array(2)].map((_, i) => (
+              <div key={i} style={{ height: "52px", borderRadius: "var(--radius-md)", background: "var(--color-peach-tint)", opacity: 0.5, marginBottom: "5px", animation: "pulse 1.5s ease-in-out infinite" }} />
+            ))}
+          </div>
         )}
-        <div className="mt-3 flex gap-4 text-sm text-slate-500">
-          <span>
-            {pastCount} session{pastCount !== 1 ? "s" : ""}
-          </span>
-          <span>{patient.phone}</span>
+        {!upcomingLoading && upcoming.length > 0 && (
+          <div style={{ padding: "12px 14px 0" }}>
+            <div className="section-title" style={{ marginBottom: "8px" }}>עתידי</div>
+            {upcoming.map((ev) => (
+              <div key={ev.id} className="session-row-upcoming">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: "14px", color: "var(--color-text-primary)" }}>
+                    {formatDate(ev.start)}
+                  </span>
+                  <StatusBadge status="upcoming" />
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-peach-deep)", marginTop: "2px" }}>
+                  {daysUntil(ev.start)}{ev.duration ? ` · ${ev.duration} דק׳` : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Past sessions */}
+        <div style={{ padding: "12px 14px 0" }}>
+          <div className="section-title" style={{ marginBottom: "8px" }}>היסטוריית טיפולים</div>
+          {pastLoading ? (
+            <div style={{ textAlign: "center", padding: "12px", color: "var(--color-text-muted)", fontSize: 12 }}>
+              טוען...
+            </div>
+          ) : pastSessions.length === 0 ? (
+            <div style={{ textAlign: "center", color: "var(--color-text-muted)", padding: "20px 0", fontSize: "13px" }}>
+              אין טיפולים קודמים
+            </div>
+          ) : (
+            <>
+              {numberedPast.map((s) => {
+                const note = Array.isArray(s.notes) ? s.notes[0] : s.notes;
+                const isIntake = note?.note_type === "intake";
+                const hasNote = !!note?.id;
+                const status = isIntake ? "intake" : hasNote ? "completed" : "needs-note";
+
+                return (
+                  <div
+                    key={s.id}
+                    className={`session-row-past ${status === "completed" ? "status-completed" : status === "needs-note" ? "status-needs-note" : ""}`}
+                    style={isIntake ? { opacity: 0.45, overflow: "hidden", padding: 0 } : { overflow: "hidden", padding: 0 }}
+                  >
+                    {/* Top section — session info, tappable to view note */}
+                    <div
+                      onClick={!isIntake && hasNote ? () => router.push(`/patients/${id}/sessions/${s.id}/view`) : undefined}
+                      style={{ padding: "10px 12px", cursor: !isIntake && hasNote ? "pointer" : "default" }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontFamily: "var(--font-display)", fontSize: "14px", color: "var(--color-text-primary)" }}>
+                          טיפול {s.number}
+                        </span>
+                        <StatusBadge status={status} />
+                      </div>
+                      <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+                        {formatDate(s.date)}
+                      </div>
+                    </div>
+
+                    {/* Bottom strip — write note action */}
+                    {status === "needs-note" && (
+                      <div
+                        onClick={() => setNoteDrawerSession(s)}
+                        style={{ borderTop: "0.5px solid #F5C4A8", background: "#FFFFFF", padding: "7px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#C93E2C", fontSize: "11px", fontWeight: 500 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                          </svg>
+                          <span>כתוב סיכום טיפול</span>
+                        </div>
+                        <span style={{ color: "rgba(197, 62, 44, 0.6)", fontSize: "14px" }}>←</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {pastSessions.length >= 50 && (
+                <div style={{ textAlign: "center", padding: "12px", color: "#B8B4B0", fontSize: 11 }}>
+                  מציג 50 טיפולים אחרונים
+                </div>
+              )}
+
+              {pastSessions.length < 50 && (
+                <div style={{ textAlign: "center", padding: "12px", color: "#B8B4B0", fontSize: 11 }}>
+                  · סוף הרשימה ·
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Full view ghost pill */}
+        <div className="fullview-footer">
+          <div className="fullview-btn" onClick={() => router.push(`/patients/${id}/full`)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+            <span>תצוגת תיק מלאה</span>
+          </div>
         </div>
       </div>
 
-      {/* Today */}
-      {todayEvents.length > 0 && (
-        <>
-          <h3 className="mt-6 mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">
-            Today
-          </h3>
-          <div className="space-y-2">
-            {todayEvents.map((event) => (
-              <div
-                key={event.id}
-                className="rounded-xl border border-primary/30 bg-slate-900 px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-white">
-                      {formatTime(event.start)}
-                      {event.duration ? ` · ${event.duration} min` : ""}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Upcoming */}
-      {futureEvents.length > 0 && (
-        <>
-          <h3 className="mt-6 mb-3 text-sm font-medium uppercase tracking-wide text-slate-500">
-            Upcoming
-          </h3>
-          <div className="space-y-2">
-            {futureEvents.map((event) => (
-              <div
-                key={event.id}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-white">
-                      {formatDate(event.start)}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {formatTime(event.start)}
-                      {event.duration ? ` · ${event.duration} min` : ""}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Past Sessions */}
-      <button
-        onClick={() => setPastExpanded((v) => !v)}
-        className="mt-6 mb-3 flex w-full items-center gap-2 text-sm font-medium uppercase tracking-wide text-slate-500"
-      >
-        <svg
-          className={`h-4 w-4 transition-transform ${pastExpanded ? "rotate-90" : ""}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-        </svg>
-        Past Sessions ({pastCount})
-      </button>
-
-      {pastExpanded && (pastCount === 0 ? (
-        <p className="text-center text-slate-500 mt-4">No past sessions.</p>
-      ) : (
-        <div className="space-y-2">
-          {pastSessions.map((session) => {
-            const note = session.notes?.[0];
-            const firstLine = note?.content
-              ? note.content.split("\n")[0].slice(0, 80)
-              : null;
-
-            return (
-              <Link
-                key={session.id}
-                href={`/patients/${id}/sessions/${session.id}`}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 active:bg-slate-800 transition-colors"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    {session.session_number && (
-                      <span className="text-xs font-medium text-primary-light">
-                        #{session.session_number}
-                      </span>
-                    )}
-                    <span className="text-xs text-slate-500">
-                      {formatDate(session.date)}
-                    </span>
-                  </div>
-                  {firstLine ? (
-                    <p
-                      className="mt-0.5 truncate text-sm text-slate-300"
-                      dir="auto"
-                    >
-                      {firstLine}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-slate-500 italic">
-                      No note
-                    </p>
-                  )}
-                </div>
-                <svg
-                  className="ml-2 h-5 w-5 shrink-0 text-slate-600"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </Link>
-            );
-          })}
-        </div>
-      ))}
-
-      {/* FAB - New Session Note */}
-      <Link
-        href={`/patients/${id}/sessions/new`}
-        className="fixed bottom-20 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/25 active:scale-95 transition-transform"
-      >
-        <svg
-          className="h-7 w-7 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4.5v15m7.5-7.5h-15"
-          />
-        </svg>
-      </Link>
+      {/* Session Note Drawer */}
+      <SessionNoteDrawer
+        open={!!noteDrawerSession}
+        onClose={() => {
+          setNoteDrawerSession(null);
+          // Re-fetch past sessions to update status
+          const supabase2 = supabaseRef.current;
+          supabase2
+            .from("sessions")
+            .select("id, date, session_number, duration, google_event_id, notes(id, note_type, created_at)", { count: "exact" })
+            .eq("patient_id", id)
+            .lte("date", new Date().toISOString())
+            .order("date", { ascending: false })
+            .range(0, 49)
+            .then(({ data, count }) => {
+              setPastSessions(data || []);
+              setSessionCount(count || 0);
+            });
+        }}
+        event={noteDrawerSession ? { id: noteDrawerSession.google_event_id, start: noteDrawerSession.date } : null}
+        patient={client}
+        sessionNumber={noteDrawerSession?.number}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import "../tokens.css";
 import "./globals.css";
 
 export const metadata = {
@@ -13,8 +14,8 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="he" dir="ltr">
-      <body className="bg-slate-950 text-white antialiased">
+    <html lang="he" dir="rtl">
+      <body>
         {children}
       </body>
     </html>

@@ -2,103 +2,160 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import StatusBadge from "@/components/StatusBadge";
+
+const AVATAR_COLORS = [
+  { bg: "#FFF3EC", color: "#D4845A" },
+  { bg: "#EAF0E6", color: "#4A5E4A" },
+];
+
+function getInitials(name) {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0];
+  return parts[0][0] + parts[parts.length - 1][0];
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("he-IL", { day: "numeric", month: "short" });
+}
+
+function deriveClientStatus(sessions) {
+  if (!sessions || sessions.length === 0) return null;
+  const pastSessions = sessions
+    .filter((s) => new Date(s.date) <= new Date())
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (pastSessions.length === 0) return null;
+  const latest = pastSessions[0];
+  const hasNote = Array.isArray(latest.notes) ? latest.notes.length > 0 : !!latest.notes?.id;
+  return hasNote ? "completed" : "needs-note";
+}
 
 export default function PatientsPage() {
-  const [patients, setPatients] = useState([]);
-  const [search, setSearch] = useState("");
+  const router = useRouter();
+  const [clients, setClients] = useState([]);
+  const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState("alpha");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const supabase = createClient();
     supabase
       .from("patients")
-      .select("id, full_name, phone, created_at")
-      .order("created_at", { ascending: false })
+      .select("id, full_name, age, gender, phone, email, chief_complaint, created_at, sessions(id, date, notes(id))")
+      .order("full_name", { ascending: true })
       .then(({ data }) => {
-        setPatients(data || []);
+        const enriched = (data || []).map((c) => {
+          const sessions = c.sessions || [];
+          const pastSessions = sessions.filter((s) => new Date(s.date) <= new Date());
+          const sorted = [...pastSessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+          return {
+            ...c,
+            session_count: sessions.length,
+            last_session_date: sorted[0]?.date || null,
+            last_session_status: deriveClientStatus(sessions),
+          };
+        });
+        setClients(enriched);
         setLoading(false);
       });
   }, []);
 
-  const filtered = patients.filter((p) =>
-    p.full_name.toLowerCase().includes(search.toLowerCase())
+  const filtered = clients.filter(
+    (c) =>
+      c.full_name.includes(query) ||
+      c.full_name.toLowerCase().includes(query.toLowerCase())
   );
 
-  return (
-    <div className="p-4">
-      {/* Search bar */}
-      <input
-        type="text"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search patients..."
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-primary focus:outline-none"
-      />
+  const sorted =
+    sortMode === "alpha"
+      ? [...filtered].sort((a, b) => a.full_name.localeCompare(b.full_name, "he"))
+      : [...filtered].sort((a, b) => {
+          if (!b.last_session_date) return -1;
+          if (!a.last_session_date) return 1;
+          return new Date(b.last_session_date) - new Date(a.last_session_date);
+        });
 
-      {/* Patient list */}
-      <div className="mt-4 space-y-2">
-        {loading ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-16 animate-pulse rounded-xl bg-slate-800"
-              />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <p className="mt-8 text-center text-slate-500">
-            {search ? "No patients match your search." : "No patients yet."}
-          </p>
-        ) : (
-          filtered.map((patient) => (
-            <Link
-              key={patient.id}
-              href={`/patients/${patient.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-4 py-3 active:bg-slate-800 transition-colors"
-            >
-              <div>
-                <p className="font-medium text-white">{patient.full_name}</p>
-                <p className="text-sm text-slate-400">{patient.phone}</p>
-              </div>
-              <svg
-                className="h-5 w-5 text-slate-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                />
-              </svg>
-            </Link>
-          ))
-        )}
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: 1, background: "var(--color-bg)" }}>
+      {/* Title */}
+      <div style={{ padding: "12px 16px 0", fontFamily: "var(--font-display)", fontSize: "20px", color: "var(--color-text-primary)" }}>
+        לקוחות
       </div>
 
-      {/* FAB */}
-      <Link
-        href="/patients/new"
-        className="fixed bottom-20 right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg shadow-primary/25 active:scale-95 transition-transform"
-      >
-        <svg
-          className="h-7 w-7 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={2}
-          stroke="currentColor"
+      {/* Search */}
+      <div style={{ padding: "10px 16px" }}>
+        <input
+          className="search-box"
+          type="text"
+          placeholder="חפש לקוח..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          dir="rtl"
+        />
+      </div>
+
+      {/* Sort pills */}
+      <div className="sort-pills-row">
+        <div
+          className={`sort-pill ${sortMode === "alpha" ? "active" : "inactive"}`}
+          onClick={() => setSortMode("alpha")}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 4.5v15m7.5-7.5h-15"
-          />
-        </svg>
-      </Link>
+          א–ת
+        </div>
+        <div
+          className={`sort-pill ${sortMode === "recent" ? "active" : "inactive"}`}
+          onClick={() => setSortMode("recent")}
+        >
+          אחרון
+        </div>
+      </div>
+
+      {/* Client list */}
+      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "80px" }}>
+        {loading ? (
+          <div style={{ padding: "16px" }}>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} style={{ height: "56px", borderRadius: "var(--radius-md)", background: "var(--color-border)", opacity: 0.4, marginBottom: "4px" }} />
+            ))}
+          </div>
+        ) : sorted.length === 0 ? (
+          <div style={{ textAlign: "center", color: "var(--color-text-muted)", marginTop: "40px", fontSize: "14px" }}>
+            {query ? "אין תוצאות" : "אין לקוחות"}
+          </div>
+        ) : (
+          sorted.map((client, index) => {
+            const av = AVATAR_COLORS[index % AVATAR_COLORS.length];
+            return (
+              <div
+                key={client.id}
+                className="client-row"
+                onClick={() => router.push(`/patients/${client.id}`)}
+              >
+                <div className="client-avatar" style={{ background: av.bg, color: av.color }}>
+                  {getInitials(client.full_name)}
+                </div>
+                <div className="client-info">
+                  <span className="client-name">{client.full_name}</span>
+                  <span className="client-sub">
+                    {client.session_count > 0
+                      ? `טיפול ${client.session_count} · ${formatDate(client.last_session_date)}`
+                      : "לקוח חדש"}
+                  </span>
+                </div>
+                {client.last_session_status && (
+                  <StatusBadge status={client.last_session_status} />
+                )}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 19.5-7.5-7.5 7.5-7.5" />
+                </svg>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

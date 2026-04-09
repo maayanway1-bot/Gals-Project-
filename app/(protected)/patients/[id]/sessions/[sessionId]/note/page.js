@@ -87,7 +87,7 @@ export default function NoteEditorPage() {
       localStorage.removeItem(draftKey);
     }
 
-    router.push(`/patients/${patientId}/sessions/${sessionId}`);
+    router.push(`/today`);
   }, [content, existingNoteId, sessionId, patientId, draftKey, router]);
 
   if (loading) {

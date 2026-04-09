@@ -1,0 +1,84 @@
+/* ============================================================
+   DESIGN TOKENS
+   Wellness PWA — Acupuncture Practice Management
+   All tokens derived from the Seeds colour palette.
+   Import this file once at the root of the app.
+   ============================================================ */
+
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond/600.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/rubik/400.css');
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/rubik/500.css');
+
+:root {
+
+  /* ── Fonts ─────────────────────────────────────────────── */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  /* Used for: date headings, patient names, section titles   */
+
+  --font-ui: 'Rubik', system-ui, sans-serif;
+  /* Used for: all UI labels, badges, CTAs, body text         */
+
+
+  /* ── App background & surfaces ─────────────────────────── */
+  --color-bg:             #FAF9F6;  /* Feather White — page bg   */
+  --color-surface:        #FFFFFF;  /* Cards, nav bar, modals    */
+  --color-border:         #EDEAE4;  /* Default dividers/borders  */
+  --color-border-strong:  #D8D4CE;  /* Hover / pressed borders   */
+
+
+  /* ── Poppy — primary action & "needs note" state ───────── */
+  --color-poppy:          #FA523C;  /* Primary CTA, action btns  */
+  --color-poppy-deep:     #C93E2C;  /* Hover/pressed state       */
+  --color-poppy-tint:     #FDEAE6;  /* Needs-note card bg        */
+  --color-poppy-mid:      #F5C4B4;  /* Needs-note card border    */
+  --color-poppy-soft:     #F5B8A8;  /* Needs-note badge bg       */
+  --color-poppy-text:     #B03020;  /* Needs-note badge text     */
+
+
+  /* ── Peach — warm accent ───────────────────────────────── */
+  --color-peach:          #FFC6AD;
+  --color-peach-deep:     #D4845A;
+  --color-peach-tint:     #FFF3EC;
+
+
+  /* ── Sage — "completed" state & secondary accents ──────── */
+  --color-sage:           #D5DBCC;
+  --color-sage-deep:      #7A8E78;
+  --color-sage-deeper:    #4A5E4A;
+  --color-sage-tint:      #EAF0E6;  /* Completed card bg         */
+  --color-sage-mid:       #CFDDBE;  /* Completed card border     */
+  --color-sage-soft:      #C4D8AE;  /* Completed badge bg        */
+  --color-sage-text:      #3D5630;  /* Completed badge/av text   */
+
+
+  /* ── Ink — "new client" state & headings ───────────────── */
+  --color-ink:            #282B30;  /* Headings, new-client      */
+  --color-ink-surface:    #F2F0EE;  /* New-client card bg        */
+  --color-ink-muted:      #D8D4CE;  /* New-client avatar bg      */
+
+
+  /* ── Neutral text ──────────────────────────────────────── */
+  --color-text-primary:   #282B30;  /* Headings, patient names   */
+  --color-text-secondary: #8A8680;  /* Stone — complaint, meta   */
+  --color-text-muted:     #A8A4A0;  /* Break text, placeholders  */
+  --color-text-inactive:  #B8B4B0;  /* Nav icons inactive        */
+
+
+  /* ── Border radius ─────────────────────────────────────── */
+  --radius-sm:   8px;
+  --radius-md:   10px;   /* Session cards                       */
+  --radius-lg:   14px;   /* Larger cards, guide cards           */
+  --radius-pill: 100px;  /* Badges, CTAs, pills                 */
+  --radius-xl:   40px;   /* Phone frame                         */
+
+
+  /* ── Spacing scale ─────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+
+}
