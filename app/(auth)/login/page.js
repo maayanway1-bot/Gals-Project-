@@ -34,16 +34,12 @@ function LoginContent() {
           src="/logo.png"
           width={100}
           height={100}
-          alt="מרפאה שלי"
+          alt="Private Clinic App"
           className="login-logo"
         />
         <div className="login-greeting">
-          <h1 className="login-greeting-text">
-            שלום,
-            <br />
-            ברוכה הבאה
-          </h1>
-          <p className="login-greeting-sub">התחברי כדי להמשיך</p>
+          <h1 className="login-greeting-text">Private Clinic App</h1>
+          <p className="login-greeting-sub">A private patient management tool for acupuncture and Chinese medicine practitioners.</p>
         </div>
       </div>
 
@@ -84,7 +80,11 @@ function LoginContent() {
       </div>
 
       {/* Footer */}
-      <p className="login-footer">גישה מוגבלת לאנשי צוות מורשים בלבד</p>
+      <div className="login-legal-links">
+        <a href="/privacy.html">Privacy Policy</a>
+        <span>·</span>
+        <a href="/terms.html">Terms of Service</a>
+      </div>
     </div>
   );
 }

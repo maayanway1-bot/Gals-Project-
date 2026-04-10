@@ -29,17 +29,17 @@ export default function SplashPage() {
         src="/logo.png"
         width={200}
         height={200}
-        alt="מרפאה שלי"
+        alt="Private Clinic App"
         className="splash-logo"
       />
 
       {/* Wordmark */}
       <div className="splash-wordmark">
         <h1 className="splash-title">
-          מרפאה <em>שלי</em>
+          Private <em>Clinic</em> App
         </h1>
         <div className="splash-divider" />
-        <p className="splash-tagline">ניהול מטופלים</p>
+        <p className="splash-tagline">Patient Management</p>
       </div>
 
       {/* Loading dots */}

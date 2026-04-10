@@ -1198,6 +1198,25 @@ input[type="range"]::-webkit-slider-thumb {
   margin: 0;
 }
 
+.login-legal-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #b8b0b8;
+}
+
+.login-legal-links a {
+  color: #b8b0b8;
+  text-decoration: none;
+}
+
+.login-legal-links a:hover {
+  color: #a8a0a8;
+  text-decoration: underline;
+}
+
 /* Safe area */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);

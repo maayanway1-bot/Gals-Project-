@@ -1,7 +1,7 @@
 {
-  "name": "מרפאה שלי",
-  "short_name": "מרפאה שלי",
-  "description": "ניהול מטופלים",
+  "name": "Private Clinic App",
+  "short_name": "Private Clinic",
+  "description": "A private patient management tool for acupuncture and Chinese medicine practitioners.",
   "start_url": "/today",
   "display": "standalone",
   "background_color": "#f5f0e8",

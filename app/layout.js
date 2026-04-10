@@ -2,13 +2,16 @@ import "../tokens.css";
 import "./globals.css";
 
 export const metadata = {
-  title: "מרפאה שלי",
-  description: "ניהול מטופלים",
+  title: "Private Clinic App",
+  description: "A private patient management tool for acupuncture and Chinese medicine practitioners.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "מרפאה שלי",
+    title: "Private Clinic App",
+  },
+  verification: {
+    google: "PASTE_YOUR_CODE_HERE",
   },
 };
 
