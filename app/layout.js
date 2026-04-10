@@ -2,8 +2,14 @@ import "../tokens.css";
 import "./globals.css";
 
 export const metadata = {
-  title: "Acupuncture App",
-  description: "Practice management for acupuncture practitioners",
+  title: "מרפאה שלי",
+  description: "ניהול מטופלים",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "מרפאה שלי",
+  },
 };
 
 export const viewport = {
