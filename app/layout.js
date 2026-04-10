@@ -11,7 +11,7 @@ export const metadata = {
     title: "Private Clinic App",
   },
   verification: {
-    google: "PASTE_YOUR_CODE_HERE",
+    google: "iZBMCbfiJvMLA3kPFbWy_bTPAp4Py0PyaK7a4fx70L4",
   },
 };
 
