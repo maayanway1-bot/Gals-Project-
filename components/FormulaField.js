@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 
 const TCM_SEED = [
@@ -111,10 +112,10 @@ export default function FormulaField({ label = "פורמולות", triggerLabel 
         <span>{triggerLabel}</span>
       </div>
 
-      {sheetOpen && (
+      {sheetOpen && createPortal(
         <>
-          <div className="sheet-overlay" onClick={() => setSheetOpen(false)} />
-          <div className="formula-sheet">
+          <div className="sheet-overlay" onClick={() => setSheetOpen(false)} onTouchMove={(e) => e.preventDefault()} />
+          <div className="formula-sheet" onTouchMove={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
             <div className="sheet-header">
               <span>בחר פורמולה</span>
@@ -160,7 +161,8 @@ export default function FormulaField({ label = "פורמולות", triggerLabel 
               </div>
             )}
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );

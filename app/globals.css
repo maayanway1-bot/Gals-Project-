@@ -813,6 +813,7 @@ input[type="range"]::-webkit-slider-thumb {
   inset: 0;
   background: rgba(0,0,0,0.3);
   z-index: 40;
+  touch-action: none;
 }
 
 .formula-sheet {
