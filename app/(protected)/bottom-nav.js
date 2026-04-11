@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const tabs = [
   {
@@ -38,6 +39,12 @@ const tabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [pendingTab, setPendingTab] = useState(null);
+
+  // Clear pending state once navigation completes
+  useEffect(() => {
+    setPendingTab(null);
+  }, [pathname]);
 
   return (
     <nav className="bottom-nav">
@@ -46,6 +53,8 @@ export default function BottomNav() {
           tab.href === "/today"
             ? pathname === "/today" || pathname === "/"
             : pathname.startsWith(tab.href);
+        const pending = pendingTab === tab.id && !active;
+        const highlighted = active || pending;
         const disabled = tab.id === "notifications";
         if (disabled) {
           return (
@@ -62,9 +71,11 @@ export default function BottomNav() {
             key={tab.id}
             href={tab.href}
             className={`nav-tab ${active ? "active" : ""}`}
+            onClick={() => !active && setPendingTab(tab.id)}
           >
-            <div style={{ color: active ? "#c07088" : "#a8a0a8", position: "relative" }}>
+            <div style={{ color: highlighted ? "#c07088" : "#a8a0a8", position: "relative" }}>
               {tab.icon}
+              {pending && <div className="nav-tab-loading" />}
             </div>
             <span className="nav-tab-label">{tab.label}</span>
             {active && <div className="nav-pip" />}
