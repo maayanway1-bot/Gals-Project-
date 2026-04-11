@@ -125,18 +125,18 @@ function IntakeForm() {
           <span className="field-label">מגדר</span>
           <div className="gender-row">
             <div className={`gender-option ${gender === "female" ? "selected" : ""}`} onClick={() => setGender("female")}>
-              <div style={{ width: "58px", height: "58px", borderRadius: "50%", background: "#FFF3EC", border: "0.5px solid #F5D0B4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: "'Noto Serif SC','Songti SC','STSong','SimSun','FangSong',Georgia,serif", fontSize: "32px", color: "#D4845A", lineHeight: 1 }}>女</span>
+              <div style={{ width: "58px", height: "58px", borderRadius: "50%", background: "var(--color-poppy-tint)", border: "0.5px solid var(--color-poppy-mid)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: "'Noto Serif SC','Songti SC','STSong','SimSun','FangSong',Georgia,serif", fontSize: "32px", color: "var(--color-poppy-deep)", lineHeight: 1 }}>女</span>
               </div>
               <span>אישה</span>
-              <span style={{ fontSize: "10px", color: "#8A8680", fontStyle: "italic" }}>nǚ</span>
+              <span style={{ fontSize: "10px", color: "var(--color-text-secondary)", fontStyle: "italic" }}>nǚ</span>
             </div>
             <div className={`gender-option ${gender === "male" ? "selected" : ""}`} onClick={() => setGender("male")}>
-              <div style={{ width: "58px", height: "58px", borderRadius: "50%", background: "#F2F0EE", border: "0.5px solid #EDEAE4", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: "'Noto Serif SC','Songti SC','STSong','SimSun','FangSong',Georgia,serif", fontSize: "32px", color: "#8A8680", lineHeight: 1 }}>男</span>
+              <div style={{ width: "58px", height: "58px", borderRadius: "50%", background: "var(--color-sage-soft)", border: "0.5px solid var(--color-sage-mid)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: "'Noto Serif SC','Songti SC','STSong','SimSun','FangSong',Georgia,serif", fontSize: "32px", color: "var(--color-sage-deep)", lineHeight: 1 }}>男</span>
               </div>
               <span>גבר</span>
-              <span style={{ fontSize: "10px", color: "#8A8680", fontStyle: "italic" }}>nán</span>
+              <span style={{ fontSize: "10px", color: "var(--color-text-secondary)", fontStyle: "italic" }}>nán</span>
             </div>
           </div>
 
