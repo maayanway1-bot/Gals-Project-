@@ -108,7 +108,6 @@ export default function FormulaField({ label = "פורמולות", triggerLabel 
               placeholder="חפש או הוסף פורמולה..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
             />
             <div className="sheet-scroll-list">
               {filteredPresets.map((f) => (

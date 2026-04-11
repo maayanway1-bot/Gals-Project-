@@ -113,9 +113,9 @@ export default function PatientsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: 1, background: "var(--color-bg)" }}>
       {/* Title */}
-      <div style={{ padding: "12px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <LogoutButton />
+      <div style={{ padding: "12px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center", direction: "rtl" }}>
         <span style={{ fontFamily: "var(--font-display)", fontSize: "26px", fontWeight: 300, color: "#2e2a38" }}>לקוחות</span>
+        <LogoutButton />
       </div>
 
       {/* Search */}
