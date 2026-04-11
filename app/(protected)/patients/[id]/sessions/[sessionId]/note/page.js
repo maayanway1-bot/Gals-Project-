@@ -131,7 +131,7 @@ export default function NoteEditorPage() {
         onChange={(e) => setContent(e.target.value)}
         dir="auto"
         placeholder="כתוב את הסיכום כאן..."
-        style={{ flex: 1, resize: "none", background: "#fdfaf6", margin: "12px", borderRadius: "16px", border: "0.5px solid #e8e0d4", padding: "16px", fontSize: "13px", lineHeight: 1.7, color: "#2e2a38", fontFamily: "var(--font-ui)", outline: "none" }}
+        style={{ flex: 1, resize: "none", background: "#fdfaf6", margin: "12px", borderRadius: "16px", border: "0.5px solid #e8e0d4", padding: "16px", fontSize: "16px", lineHeight: 1.7, color: "#2e2a38", fontFamily: "var(--font-ui)", outline: "none" }}
       />
     </div>
   );
