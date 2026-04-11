@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
+import { getInitials, formatDate } from "@/lib/utils";
 
 function LogoutButton() {
   const router = useRouter();
@@ -41,18 +42,6 @@ const AVATAR_COLORS = [
   { bg: "#f5e8ee", color: "#a05870" },
   { bg: "#eef6f3", color: "#3a7060" },
 ];
-
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0];
-  return parts[0][0] + parts[parts.length - 1][0];
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("he-IL", { day: "numeric", month: "short" });
-}
 
 function deriveClientStatus(sessions) {
   if (!sessions || sessions.length === 0) return null;

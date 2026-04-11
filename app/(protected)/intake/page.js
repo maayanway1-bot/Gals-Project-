@@ -8,8 +8,7 @@ import ClientBanner from "@/components/ClientBanner";
 import FormTextarea from "@/components/FormTextarea";
 import PhotoAttachment from "@/components/PhotoAttachment";
 import FormulaField from "@/components/FormulaField";
-
-const DAY_NAMES = ["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"];
+import { DAY_NAMES, uploadPhoto } from "@/lib/utils";
 
 const PersonIcon = () => (
   <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
@@ -54,19 +53,6 @@ function IntakeForm() {
   const formattedDate = `${dateObj.getDate()}/${dateObj.getMonth() + 1}`;
   const agePct = ((age - 1) / 89) * 100;
 
-  async function uploadPhoto(dataUrl, sessionId) {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const ext = blob.type.split("/")[1] || "jpg";
-    const filename = `${sessionId}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("session-photos")
-      .upload(filename, blob, { contentType: blob.type, upsert: false });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from("session-photos").getPublicUrl(filename);
-    return urlData.publicUrl;
-  }
-
   async function handleSave() {
     if (!isValid || saving) return;
     setSaving(true);
@@ -93,7 +79,7 @@ function IntakeForm() {
 
       let photoUrls = [];
       if (photos.length > 0) {
-        photoUrls = await Promise.all(photos.filter((p) => p.startsWith("data:")).map((p) => uploadPhoto(p, session.id)));
+        photoUrls = await Promise.all(photos.filter((p) => p.startsWith("data:")).map((p) => uploadPhoto(supabase, p, session.id)));
       }
 
       const { error: noteError } = await supabase.from("notes").insert({

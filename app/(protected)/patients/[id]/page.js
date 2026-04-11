@@ -7,27 +7,7 @@ import ClientBanner from "@/components/ClientBanner";
 import StatusBadge from "@/components/StatusBadge";
 import TopBar from "@/components/TopBar";
 import SessionNoteDrawer from "@/components/SessionNoteDrawer";
-
-const PAGE_SIZE = 10;
-
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0];
-  return parts[0][0] + parts[parts.length - 1][0];
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatMonthYear(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  const months = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+import { getInitials, formatDateFull as formatDate, formatMonthYear } from "@/lib/utils";
 
 function daysUntil(dateStr) {
   const days = Math.ceil((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24));

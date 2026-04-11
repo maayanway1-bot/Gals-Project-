@@ -88,7 +88,7 @@ export default function NoteEditorPage() {
     }
 
     router.push(`/today`);
-  }, [content, existingNoteId, sessionId, patientId, draftKey, router]);
+  }, [content, existingNoteId, sessionId, draftKey, router]);
 
   if (loading) {
     return (

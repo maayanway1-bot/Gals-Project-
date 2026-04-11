@@ -7,6 +7,7 @@ import TopBar from "@/components/TopBar";
 import SectionNumber from "@/components/SectionNumber";
 import FormulaChip from "@/components/FormulaChip";
 import PhotoThumbnail from "@/components/PhotoThumbnail";
+import NoteField from "@/components/NoteField";
 
 function formatDateTime(dateStr) {
   if (!dateStr) return "";
@@ -14,16 +15,6 @@ function formatDateTime(dateStr) {
   return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" }) +
     " · " +
     d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-}
-
-function NoteField({ label, value }) {
-  if (!value || !value.trim()) return null;
-  return (
-    <div className="note-field">
-      <div className="note-field-label">{label}</div>
-      <div className="note-field-val">{value}</div>
-    </div>
-  );
 }
 
 export default function ReadOnlyNotePage() {

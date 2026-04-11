@@ -6,21 +6,8 @@ import { createClient } from "@/lib/supabase/client";
 import TopBar from "@/components/TopBar";
 import StatusBadge from "@/components/StatusBadge";
 import FormulaChip from "@/components/FormulaChip";
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function NoteField({ label, value }) {
-  if (!value || !value.trim()) return null;
-  return (
-    <div className="note-field">
-      <div className="note-field-label">{label}</div>
-      <div className="note-field-val">{value}</div>
-    </div>
-  );
-}
+import { formatDateFull as formatDate } from "@/lib/utils";
+import NoteField from "@/components/NoteField";
 
 function buildExportHTML(client, sessions, allNotes) {
   const sessionBlocks = sessions
@@ -108,7 +95,6 @@ export default function FullViewPage() {
     Promise.all([
       supabase.from("patients").select("*").eq("id", id).single(),
       supabase.from("sessions").select("id, date, session_number, google_event_id").eq("patient_id", id).order("date", { ascending: false }),
-      supabase.from("notes").select("*").in("session_id", []),
     ]).then(async ([{ data: pat }, { data: sess }]) => {
       setClient(pat);
       const sessionIds = (sess || []).map((s) => s.id);

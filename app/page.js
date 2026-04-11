@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 export default function SplashPage() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const minDelay = new Promise((r) => setTimeout(r, 2000));

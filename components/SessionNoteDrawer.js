@@ -8,24 +8,11 @@ import FormTextarea from "@/components/FormTextarea";
 import PhotoAttachment from "@/components/PhotoAttachment";
 import FormulaField from "@/components/FormulaField";
 import SectionNumber from "@/components/SectionNumber";
-
-const DAY_NAMES = ["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"];
-
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0];
-  return parts[0][0] + parts[parts.length - 1][0];
-}
+import { getInitials, formatTime, DAY_NAMES, uploadPhoto } from "@/lib/utils";
 
 function formatHebDate(dateStr) {
   const d = new Date(dateStr);
   return `${DAY_NAMES[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`;
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 export default function SessionNoteDrawer({ open, onClose, event, patient, sessionNumber, existingSessionId }) {
@@ -94,19 +81,6 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
     (f) => f.trim().length > 0
   );
 
-  async function uploadPhoto(dataUrl, sid) {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const ext = blob.type.split("/")[1] || "jpg";
-    const filename = `${sid}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("session-photos")
-      .upload(filename, blob, { contentType: blob.type, upsert: false });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from("session-photos").getPublicUrl(filename);
-    return urlData.publicUrl;
-  }
-
   async function handleSave() {
     if (!hasAnyText || saving) return;
     setSaving(true);
@@ -132,7 +106,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
 
       // Upload only new base64 photos
       const newPhotoUrls = await Promise.all(
-        photos.filter((p) => p.startsWith("data:")).map((p) => uploadPhoto(p, sid))
+        photos.filter((p) => p.startsWith("data:")).map((p) => uploadPhoto(supabase, p, sid))
       );
       const allPhotoUrls = [...existingPhotoUrls, ...newPhotoUrls];
 
