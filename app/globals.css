@@ -1319,6 +1319,186 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: 2px;
 }
 
+/* ── Calendar Nav Trigger ─────────────────────────── */
+.cal-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.cal-trigger:active {
+  background: rgba(192, 112, 136, 0.08);
+}
+.cal-trigger-open {
+  background: rgba(192, 112, 136, 0.08);
+}
+.cal-trigger-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 500;
+  color: #c07088;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-decoration: underline;
+  text-decoration-color: rgba(192, 112, 136, 0.35);
+  text-underline-offset: 2px;
+}
+
+/* ── Calendar Nav Modal ──────────────────────────── */
+.cal-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  animation: calFadeIn 0.15s ease;
+}
+.cal-modal-card {
+  position: fixed;
+  top: 130px;
+  left: 14px;
+  right: 14px;
+  z-index: 51;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 16px;
+  animation: calSlideIn 0.2s ease;
+}
+@keyframes calFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes calSlideIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cal-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cal-modal-month-label {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+.cal-modal-nav-buttons {
+  display: flex;
+  gap: 6px;
+}
+.cal-modal-nav-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0.5px solid var(--color-border-strong);
+  background: var(--color-surface-alt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  -webkit-appearance: none;
+}
+.cal-modal-nav-btn:active {
+  background: var(--color-border);
+}
+
+.cal-modal-dow-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.cal-modal-dow {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  padding: 4px 0;
+}
+
+.cal-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.cal-modal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 0;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  border-radius: 50%;
+  aspect-ratio: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+.cal-modal-cell:active:not(:disabled) {
+  background: rgba(192, 112, 136, 0.08);
+}
+.cal-modal-cell-other {
+  color: var(--color-border-strong);
+  cursor: default;
+  pointer-events: none;
+}
+.cal-modal-cell-today {
+  box-shadow: inset 0 0 0 1.5px var(--color-primary);
+}
+.cal-modal-cell-selected {
+  background: var(--color-primary) !important;
+  color: #fff;
+}
+.cal-modal-dot {
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+.cal-modal-dot-selected {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.cal-modal-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 0.5px solid var(--color-border);
+}
+.cal-modal-today-pill {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-poppy-tint);
+  border: 0.5px solid var(--color-poppy-mid);
+  border-radius: var(--radius-pill);
+  padding: 6px 18px;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.cal-modal-today-pill:active {
+  background: var(--color-poppy-mid);
+  color: #fff;
+}
+
 /* ── Filter Pills (§4) ────────────────────────────── */
 .today-pills-wrapper {
   padding: 8px 12px 4px;
@@ -1395,9 +1575,31 @@ input[type="range"]::-webkit-slider-thumb {
   overflow-x: hidden;
   padding: 4px 12px 100px;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 .today-session-list::-webkit-scrollbar { display: none; }
 .today-session-list { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Pull-to-refresh ─────────────────────────────── */
+.ptr-indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  transition: height 0.2s ease, opacity 0.2s ease;
+  padding-bottom: 4px;
+}
+.ptr-spinner {
+  color: var(--color-primary);
+  transition: transform 0.2s ease;
+}
+.ptr-spinning {
+  animation: ptrSpin 0.8s linear infinite;
+}
+@keyframes ptrSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 /* ── Period Labels (§7) ────────────────────────────── */
 .today-period-label {

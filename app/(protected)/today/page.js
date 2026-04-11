@@ -1,23 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import SessionNoteDrawer from "@/components/SessionNoteDrawer";
+import CalendarNavModal from "@/components/CalendarNavModal";
+import CalendarNavIcon from "@/components/CalendarNavIcon";
+import { formatHebDate, formatTime, DAY_NAMES } from "@/lib/utils";
 
-// ── Hebrew strings ──────────────────────────────────────
-const DAY_NAMES = ["יום א׳","יום ב׳","יום ג׳","יום ד׳","יום ה׳","יום ו׳","שבת"];
-const MONTH_NAMES = [
-  "ינואר","פברואר","מרץ","אפריל","מאי","יוני",
-  "יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר",
-];
 const PERIOD_LABELS = { morning: "בוקר", afternoon: "צהריים", evening: "ערב" };
 const BREAK_KEYWORDS = ["הפסקה", "break"];
-
-// ── Helpers ─────────────────────────────────────────────
-function formatHebDate(date) {
-  return `${DAY_NAMES[date.getDay()]}, ${date.getDate()} ב${MONTH_NAMES[date.getMonth()]}`;
-}
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -34,18 +26,6 @@ function getPeriod(dateStr) {
   if (hour < 12) return "morning";
   if (hour < 17) return "afternoon";
   return "evening";
-}
-
-function formatTime(dateStr) {
-  if (!dateStr) return "";
-  return new Date(dateStr).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", hour12: false });
-}
-
-function getInitials(name) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0];
-  return parts[0][0] + parts[parts.length - 1][0];
 }
 
 function isBreakEvent(title) {
@@ -71,8 +51,55 @@ export default function TodayPage() {
   const [error, setError] = useState(null);
   const [noteDrawerEvent, setNoteDrawerEvent] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const isToday = isSameDay(selectedDate, new Date());
+
+  // Derive unique dates that have sessions (for calendar dots)
+  const sessionDates = useMemo(
+    () => events.map((ev) => new Date(ev.start)),
+    [events]
+  );
+
+  // ── Pull-to-refresh ──────────────────────────────────
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartY = useRef(0);
+  const isPulling = useRef(false);
+  const listRef = useRef(null);
+
+  const PULL_THRESHOLD = 60;
+
+  const handleTouchStart = useCallback((e) => {
+    const el = listRef.current;
+    if (el && el.scrollTop <= 0) {
+      touchStartY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isPulling.current || refreshing) return;
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) {
+      // Dampen the pull (feels more natural)
+      setPullDistance(Math.min(delta * 0.5, 100));
+    } else {
+      isPulling.current = false;
+      setPullDistance(0);
+    }
+  }, [refreshing]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isPulling.current) return;
+    isPulling.current = false;
+    if (pullDistance >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      setPullDistance(PULL_THRESHOLD);
+    } else {
+      setPullDistance(0);
+    }
+  }, [pullDistance, refreshing]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -120,6 +147,15 @@ export default function TodayPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Trigger refresh when pull completes
+  useEffect(() => {
+    if (!refreshing) return;
+    fetchData().then(() => {
+      setRefreshing(false);
+      setPullDistance(0);
+    });
+  }, [refreshing]);
 
   // ── Patient matching ──────────────────────────────────
   const matchPatient = (event) => {
@@ -236,7 +272,16 @@ export default function TodayPage() {
             </svg>
           </button>
           <div className="today-center">
-            {isToday && <span className="today-eyebrow">היום</span>}
+            <button
+              className={`cal-trigger${calendarOpen ? " cal-trigger-open" : ""}`}
+              onClick={() => setCalendarOpen(true)}
+              aria-label="פתח לוח שנה"
+            >
+              <span className="cal-trigger-label">
+                {isToday ? "היום" : DAY_NAMES[selectedDate.getDay()]}
+              </span>
+              <CalendarNavIcon size={14} color="#c07088" />
+            </button>
             <div className="today-date">{formatHebDate(selectedDate)}</div>
             {!loading && totalSessions > 0 && (
               <div className="today-subtitle">
@@ -293,7 +338,28 @@ export default function TodayPage() {
       )}
 
       {/* ── Session List ───────────────────────────────── */}
-      <div className="today-session-list">
+      <div
+        className="today-session-list"
+        ref={listRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Pull-to-refresh indicator */}
+        <div
+          className="ptr-indicator"
+          style={{
+            height: pullDistance > 0 ? `${pullDistance}px` : 0,
+            opacity: pullDistance > 0 ? Math.min(pullDistance / PULL_THRESHOLD, 1) : 0,
+          }}
+        >
+          <div className={`ptr-spinner${refreshing ? " ptr-spinning" : ""}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+          </div>
+        </div>
+
         {error && <div className="today-error">{error}</div>}
 
         {loading ? (
@@ -401,6 +467,14 @@ export default function TodayPage() {
         onClose={handleNoteDrawerClose}
         event={noteDrawerEvent}
         patient={noteDrawerEvent?._patient}
+      />
+
+      <CalendarNavModal
+        isOpen={calendarOpen}
+        currentDate={selectedDate}
+        onClose={() => setCalendarOpen(false)}
+        onSelectDate={setSelectedDate}
+        sessionDates={sessionDates}
       />
     </div>
   );

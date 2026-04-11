@@ -5,10 +5,16 @@ import { createClient } from "@/lib/supabase/client";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
+const IS_DEV = process.env.NODE_ENV === "development";
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_USER_EMAIL;
+const DEV_PASSWORD = process.env.NEXT_PUBLIC_DEV_USER_PASSWORD;
+
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const [loading, setLoading] = useState(false);
+  const [devLoading, setDevLoading] = useState(false);
+  const [devError, setDevError] = useState(null);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -24,6 +30,44 @@ function LoginContent() {
         },
       },
     });
+  };
+
+  const handleDevLogin = async () => {
+    if (!DEV_EMAIL || !DEV_PASSWORD) return;
+    setDevLoading(true);
+    setDevError(null);
+    const supabase = createClient();
+
+    // Try sign in first
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: DEV_EMAIL,
+      password: DEV_PASSWORD,
+    });
+
+    if (signInErr) {
+      // If user doesn't exist, try sign up then sign in
+      const { error: signUpErr } = await supabase.auth.signUp({
+        email: DEV_EMAIL,
+        password: DEV_PASSWORD,
+      });
+      if (signUpErr) {
+        setDevError(signUpErr.message);
+        setDevLoading(false);
+        return;
+      }
+      // Try sign in again after signup
+      const { error: retryErr } = await supabase.auth.signInWithPassword({
+        email: DEV_EMAIL,
+        password: DEV_PASSWORD,
+      });
+      if (retryErr) {
+        setDevError("Signed up but couldn't log in — check if email confirmation is disabled in Supabase Auth settings.");
+        setDevLoading(false);
+        return;
+      }
+    }
+
+    window.location.href = "/today";
   };
 
   return (
@@ -78,6 +122,35 @@ function LoginContent() {
           </div>
         )}
       </div>
+
+      {/* Dev login bypass */}
+      {IS_DEV && DEV_EMAIL && DEV_PASSWORD && (
+        <div style={{ padding: "0 24px", marginTop: "12px" }}>
+          <button
+            onClick={handleDevLogin}
+            disabled={devLoading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              borderRadius: "12px",
+              border: "1px dashed #a8a0a8",
+              background: "transparent",
+              color: "#a8a0a8",
+              fontSize: "13px",
+              fontFamily: "var(--font-ui)",
+              cursor: devLoading ? "default" : "pointer",
+              opacity: devLoading ? 0.5 : 1,
+            }}
+          >
+            {devLoading ? "מתחבר..." : `Dev Login (${DEV_EMAIL})`}
+          </button>
+          {devError && (
+            <div style={{ color: "#c07088", fontSize: "11px", textAlign: "center", marginTop: "6px" }}>
+              {devError}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="login-legal-links">
