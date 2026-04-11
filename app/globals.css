@@ -818,12 +818,8 @@ input[type="range"]::-webkit-slider-thumb {
 
 .formula-sheet {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   background: var(--color-surface);
-  border-radius: 16px 16px 0 0;
-  max-height: 60vh;
   display: flex;
   flex-direction: column;
   z-index: 50;
@@ -835,7 +831,7 @@ input[type="range"]::-webkit-slider-thumb {
   height: 4px;
   border-radius: 2px;
   background: var(--color-border);
-  margin: 8px auto;
+  margin: 12px auto 4px;
 }
 
 .sheet-header {
