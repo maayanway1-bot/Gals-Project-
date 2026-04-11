@@ -122,7 +122,7 @@ export default function ClientProfilePage() {
       <TopBar
         title=""
         onBack={() => router.push("/patients")}
-        backLabel="לקוחות"
+        backLabel="מטופלים"
         rightLabel=""
         onRight={() => {}}
         rightDisabled

@@ -124,10 +124,10 @@ function IntakeForm() {
       <div className="scroll-content">
         <ClientBanner
           variant="intake"
-          clientName={eventTitle || "לקוח חדש"}
-          sessionLabel={`לקוח חדש · ${dayName} ${formattedDate} ${eventTime}`}
+          clientName={eventTitle || "מטופל/ת חדש/ה"}
+          sessionLabel={`מטופל/ת חדש/ה · ${dayName} ${formattedDate} ${eventTime}`}
           avatarContent={<PersonIcon />}
-          tag="לקוח חדש"
+          tag="מטופל/ת חדש/ה"
         />
 
         {/* פרטים אישיים */}
@@ -202,7 +202,7 @@ function IntakeForm() {
             onClick={isValid && !saving ? handleSave : undefined}
             style={{ background: "#eef6f3", color: "#3a7060", border: "0.5px solid #a8d0c8", fontSize: "14px", fontWeight: 500, borderRadius: "12px", padding: "13px 0", width: "100%", display: "block", textAlign: "center", cursor: isValid && !saving ? "pointer" : "default", opacity: isValid && !saving ? 1 : 0.4, pointerEvents: isValid && !saving ? "auto" : "none", fontFamily: "var(--font-ui)" }}
           >
-            {saving ? "שומר..." : "צור כרטיס לקוח ושמור סיכום"}
+            {saving ? "שומר..." : "צור כרטיס מטופל/ת ושמור סיכום"}
           </div>
         </div>
         <div style={{ height: "40px" }} />

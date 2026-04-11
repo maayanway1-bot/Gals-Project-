@@ -34,7 +34,7 @@ function buildExportHTML(client, sessions, allNotes) {
       const num = arr.length - i;
       if (!note) return "";
       const fields = [
-        note.client_report && `<div class="note-field"><div class="field-label">דיווח הלקוח</div><div class="field-val">${note.client_report}</div></div>`,
+        note.client_report && `<div class="note-field"><div class="field-label">דיווח המטופל/ת</div><div class="field-val">${note.client_report}</div></div>`,
         note.tongue_and_pulse && `<div class="note-field"><div class="field-label">לשון ודופק</div><div class="field-val">${note.tongue_and_pulse}</div></div>`,
         note.treatment_done && `<div class="note-field"><div class="field-label">מה נעשה</div><div class="field-val">${note.treatment_done}</div></div>`,
         note.treatment_plan && `<div class="note-field"><div class="field-label">תכנית לטיפול הבא</div><div class="field-val">${note.treatment_plan}</div></div>`,
@@ -55,7 +55,7 @@ function buildExportHTML(client, sessions, allNotes) {
 <html dir="rtl" lang="he">
 <head>
 <meta charset="UTF-8">
-<title>תיק לקוח · ${client.full_name}</title>
+<title>תיק מטופל/ת · ${client.full_name}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rubik&family=Cormorant+Garamond&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -183,7 +183,7 @@ export default function FullViewPage() {
                 {note && (
                   <div>
                     <NoteField label="תלונה עיקרית" value={note.chief_complaint} />
-                    <NoteField label="דיווח הלקוח" value={note.client_report} />
+                    <NoteField label="דיווח המטופל/ת" value={note.client_report} />
                     <NoteField label="לשון ודופק" value={note.tongue_and_pulse} />
                     <NoteField label="מה נעשה" value={note.treatment_done} />
                     <NoteField label="תכנית לטיפול הבא" value={note.treatment_plan} />

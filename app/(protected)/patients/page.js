@@ -114,7 +114,7 @@ export default function PatientsPage() {
     <div style={{ display: "flex", flexDirection: "column", flex: 1, background: "var(--color-bg)" }}>
       {/* Title */}
       <div style={{ padding: "12px 16px 0", display: "flex", justifyContent: "space-between", alignItems: "center", direction: "rtl" }}>
-        <span style={{ fontFamily: "var(--font-display)", fontSize: "26px", fontWeight: 300, color: "#2e2a38" }}>לקוחות</span>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: "26px", fontWeight: 300, color: "#2e2a38" }}>מטופלים</span>
         <LogoutButton />
       </div>
 
@@ -123,7 +123,7 @@ export default function PatientsPage() {
         <input
           className="search-box"
           type="text"
-          placeholder="חפש לקוח..."
+          placeholder="חפש מטופל/ת..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           dir="rtl"
@@ -156,7 +156,7 @@ export default function PatientsPage() {
           </div>
         ) : sorted.length === 0 ? (
           <div style={{ textAlign: "center", color: "var(--color-text-muted)", marginTop: "40px", fontSize: "14px" }}>
-            {query ? "אין תוצאות" : "אין לקוחות"}
+            {query ? "אין תוצאות" : "אין מטופלים"}
           </div>
         ) : (
           sorted.map((client, index) => {
@@ -175,7 +175,7 @@ export default function PatientsPage() {
                   <span className="client-sub">
                     {client.session_count > 0
                       ? `טיפול ${client.session_count} · ${formatDate(client.last_session_date)}`
-                      : "לקוח חדש"}
+                      : "מטופל/ת חדש/ה"}
                   </span>
                 </div>
                 {client.last_session_status && (

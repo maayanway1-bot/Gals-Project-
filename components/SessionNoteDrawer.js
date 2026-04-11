@@ -198,11 +198,11 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
           <div className="form-section">
             <div className="section-header">
               <SectionNumber number={1} color="#D4845A" bg="#FFF3EC" />
-              <span>הדיווח — מה מביא הלקוח</span>
+              <span>הדיווח — מה מביא המטופל/ת</span>
             </div>
             <FormTextarea
-              label="דיווח הלקוח"
-              placeholder="מה מדווח הלקוח? תסמינים, שינויים, תחושות, שינה, אנרגיה..."
+              label="דיווח המטופל/ת"
+              placeholder="מה מדווח/ת המטופל/ת? תסמינים, שינויים, תחושות, שינה, אנרגיה..."
               value={clientReport}
               onChange={setClientReport}
               minHeight={80}

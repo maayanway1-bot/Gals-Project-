@@ -88,7 +88,7 @@ export default function ReadOnlyNotePage() {
             <SectionNumber number={1} color="#2e2a38" bg="#ede8de" />
             <span>הדיווח</span>
           </div>
-          <NoteField label="דיווח הלקוח" value={note.client_report} />
+          <NoteField label="דיווח המטופל/ת" value={note.client_report} />
           <NoteField label="לשון ודופק" value={note.tongue_and_pulse} />
         </div>
 
