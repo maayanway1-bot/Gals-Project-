@@ -26,9 +26,10 @@ export default function Toast() {
 
   useEffect(() => {
     if (!visible) return;
-    const timer = setTimeout(() => setVisible(false), 3000);
+    const duration = type === "error" ? 6000 : 3000;
+    const timer = setTimeout(() => setVisible(false), duration);
     return () => clearTimeout(timer);
-  }, [visible]);
+  }, [visible, type]);
 
   if (!visible) return null;
 

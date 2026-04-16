@@ -150,6 +150,15 @@ async function resolveMorningClientId(token, patient, supabase) {
   return String(clientId);
 }
 
+function logInvoiceError(stage, details) {
+  console.error(JSON.stringify({
+    event: "invoice_error",
+    stage,
+    timestamp: new Date().toISOString(),
+    ...details,
+  }));
+}
+
 // Map internal error codes to Hebrew user-facing messages
 function errorToMessage(code) {
   if (code === "INVALID_CREDENTIALS") return "פרטי ה-API שגויים. יש לבדוק את המפתחות בחשבון המורנינג.";
@@ -245,6 +254,7 @@ export async function POST(request) {
     } catch (err) {
       const code = err?.message || "UNKNOWN";
       const status = code === "INVALID_CREDENTIALS" ? 401 : 502;
+      logInvoiceError("get_token", { code, patientId, sessionId });
       return NextResponse.json({ error: errorToMessage(code) }, { status });
     }
 
@@ -254,6 +264,7 @@ export async function POST(request) {
       try {
         morningClientId = await resolveMorningClientId(token, patient, supabase);
       } catch (err) {
+        logInvoiceError("resolve_client", { code: err?.message, patientId, patientEmail: patient.email, sessionId });
         return NextResponse.json(
           { error: errorToMessage(err?.message) },
           { status: 502 }
@@ -268,6 +279,7 @@ export async function POST(request) {
       .eq("id", sessionId);
 
     if (priceError) {
+      logInvoiceError("save_price", { sessionId, price, supabaseError: priceError.message });
       return NextResponse.json(
         { error: "שגיאה בשמירת המחיר. יש לנסות שוב." },
         { status: 500 }
@@ -312,6 +324,7 @@ export async function POST(request) {
           }),
         });
       } catch (err) {
+        logInvoiceError("create_document_fetch", { code: err?.message, patientId, sessionId, price, serviceType });
         return NextResponse.json(
           { error: errorToMessage(err?.message) },
           { status: 502 }
@@ -325,6 +338,7 @@ export async function POST(request) {
           detail = errBody?.errorMessage || errBody?.message || "";
         } catch { /* not JSON */ }
 
+        logInvoiceError("create_document_rejected", { httpStatus: docRes.status, detail, patientId, sessionId, price, serviceType, morningClientId });
         return NextResponse.json(
           { error: "שגיאה ביצירת חשבונית במורנינג." + (detail ? ` (${detail})` : "") + " יש לנסות שוב." },
           { status: 502 }
@@ -335,6 +349,7 @@ export async function POST(request) {
       try {
         doc = await docRes.json();
       } catch {
+        logInvoiceError("create_document_parse", { patientId, sessionId });
         return NextResponse.json(
           { error: "תשובה לא תקינה מצד מורנינג. יש לנסות שוב." },
           { status: 502 }
@@ -343,6 +358,7 @@ export async function POST(request) {
 
       invoiceId = doc?.id;
       if (!invoiceId) {
+        logInvoiceError("create_document_no_id", { patientId, sessionId, responseKeys: Object.keys(doc || {}) });
         return NextResponse.json(
           { error: "תשובה לא תקינה מצד מורנינג. יש לנסות שוב." },
           { status: 502 }
@@ -360,6 +376,7 @@ export async function POST(request) {
       .eq("id", sessionId);
 
     if (updateError) {
+      logInvoiceError("update_session", { sessionId, invoiceId: String(invoiceId), supabaseError: updateError.message });
       // Invoice was created in Morning but we failed to record it locally.
       // Return success with a warning so the user knows the invoice exists,
       // but flag that the DB is out of sync.
@@ -371,7 +388,8 @@ export async function POST(request) {
     }
 
     return NextResponse.json({ success: true, invoiceId: String(invoiceId) });
-  } catch {
+  } catch (err) {
+    logInvoiceError("unhandled", { message: err?.message, stack: err?.stack });
     return NextResponse.json(
       { error: "שגיאה בלתי צפויה. יש לנסות שוב." },
       { status: 500 }
