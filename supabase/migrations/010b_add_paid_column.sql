@@ -1,0 +1,3 @@
+-- NOTE: This migration is a no-op. The paid column was already added in 010_morning_integration.sql.
+-- Kept here to preserve migration history continuity.
+-- ALTER TABLE sessions ADD COLUMN IF NOT EXISTS paid boolean DEFAULT false;

@@ -2,6 +2,52 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getValidAccessToken } from "@/lib/google-auth";
 
+function getMockEvents(localDate) {
+  const base = `${localDate}T`;
+  return [
+    {
+      id: "mock-event-1",
+      title: "רונית כהן",
+      start: `${base}09:00:00+03:00`,
+      end: `${base}09:45:00+03:00`,
+      duration: 45,
+      attendees: [{ email: "ronit@example.com", name: "רונית כהן" }],
+    },
+    {
+      id: "mock-event-2",
+      title: "דני לוי",
+      start: `${base}10:00:00+03:00`,
+      end: `${base}10:45:00+03:00`,
+      duration: 45,
+      attendees: [{ email: "dani@example.com", name: "דני לוי" }],
+    },
+    {
+      id: "mock-event-3",
+      title: "הפסקה",
+      start: `${base}11:00:00+03:00`,
+      end: `${base}11:30:00+03:00`,
+      duration: 30,
+      attendees: [],
+    },
+    {
+      id: "mock-event-4",
+      title: "מיכל אברהם",
+      start: `${base}12:00:00+03:00`,
+      end: `${base}13:00:00+03:00`,
+      duration: 60,
+      attendees: [{ email: "michal@example.com", name: "מיכל אברהם" }],
+    },
+    {
+      id: "mock-event-5",
+      title: "יוסי חדד",
+      start: `${base}14:00:00+03:00`,
+      end: `${base}14:45:00+03:00`,
+      duration: 45,
+      attendees: [{ email: "yossi@example.com", name: "יוסי חדד" }],
+    },
+  ];
+}
+
 export async function GET(request) {
   try {
     const supabase = await createClient();
@@ -12,8 +58,6 @@ export async function GET(request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const accessToken = await getValidAccessToken(supabase, user.id);
 
     // Use Israel timezone for day boundaries
     const TZ = "Asia/Jerusalem";
@@ -28,6 +72,17 @@ export async function GET(request) {
     } else {
       const now = new Date();
       localDate = now.toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD
+    }
+
+    // In dev mode, fall back to mock events if Google auth fails
+    let accessToken;
+    try {
+      accessToken = await getValidAccessToken(supabase, user.id);
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        return NextResponse.json({ events: getMockEvents(localDate) });
+      }
+      throw err;
     }
 
     const startOfDay = new Date(`${localDate}T00:00:00+03:00`);
@@ -51,6 +106,9 @@ export async function GET(request) {
     if (!calRes.ok) {
       const errText = await calRes.text();
       if (calRes.status === 401) {
+        if (process.env.NODE_ENV === "development") {
+          return NextResponse.json({ events: getMockEvents(localDate) });
+        }
         return NextResponse.json(
           { error: "Google token expired. Please sign out and sign in again." },
           { status: 401 }
@@ -93,6 +151,11 @@ export async function GET(request) {
 
     return NextResponse.json({ events });
   } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      const { searchParams } = new URL(request.url);
+      const dateParam = searchParams.get("date") || new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
+      return NextResponse.json({ events: getMockEvents(dateParam) });
+    }
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

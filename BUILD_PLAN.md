@@ -328,6 +328,37 @@ Then do a UI polish pass:
 
 ---
 
+## Phase 9 — Morning Invoice Integration
+
+### Goal
+Practitioners can send a legally signed invoice to a patient from the Today View.
+
+### Tasks
+- [ ] Supabase: create `practitioners` table with Vault-encrypted Morning credential columns
+- [ ] Supabase: add `morning_client_id` column to `patients`
+- [ ] Supabase: add `price`, `invoice_sent`, `invoice_id` columns to `sessions`
+- [ ] Next.js API route: `POST /api/morning/test-connection`
+- [ ] Next.js API route: `POST /api/morning/send-invoice` (full flow: token → resolve client → create document → update session)
+- [ ] Morning Setup Modal UI (bottom sheet, fields, test button, save)
+- [ ] Wire "שלח חשבונית" button on Today View session cards
+- [ ] Price prompt when session has no price
+- [ ] Success/error toast feedback
+- [ ] Session card reflects `invoice_sent` state (button disabled, "נשלחה" label)
+
+### Validation Checklist
+- [ ] Credentials save correctly and are encrypted in Vault
+- [ ] Test connection button gives clear pass/fail feedback
+- [ ] First invoice to a new patient creates them in Morning and caches the ID
+- [ ] Second invoice to the same patient uses cached Morning client ID (no duplicate created)
+- [ ] Invoice arrives in patient's email from Morning
+- [ ] Session card updates to "נשלחה" after success
+- [ ] Patient with no email shows correct error
+- [ ] All Morning API calls go through server-side routes only (no credentials on client)
+
+### Ship when: all checklist items pass on a real device with a Morning sandbox account
+
+---
+
 ## Tips for working with Claude Code
 
 - **One phase at a time.** Don't ask it to build phases 3 and 4 together.

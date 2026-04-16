@@ -17,3 +17,19 @@ out/
 .vscode/*
 !.vscode/extensions.json
 *.sw?
+.vercel
+
+# screenshots
+*.png
+
+# playwright
+.playwright-mcp/
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# claude
+.claude/agent-memory/
+.claude/agents/
+.claude/worktrees/

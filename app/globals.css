@@ -1794,3 +1794,389 @@ input[type="range"]::-webkit-slider-thumb {
   justify-content: center;
   flex-shrink: 0;
 }
+
+/* ── Payment CTA Button ──────────────────────────────── */
+.today-cta-payment {
+  background: #3a7060;
+  color: #fff;
+  border: 0.5px solid #2e5a4c;
+}
+
+/* ── Invoice CTA Button ──────────────────────────────── */
+.today-cta-invoice {
+  background: var(--color-sage-soft);
+  color: var(--color-sage-deep);
+  border: 0.5px solid var(--color-sage-mid);
+}
+.today-cta-invoice:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── Invoice Sent Label ──────────────────────────────── */
+.today-invoice-sent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: #3a7060;
+  letter-spacing: 0.04em;
+}
+
+/* ── Morning Setup Modal ─────────────────────────────── */
+.morning-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 85dvh;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.morning-modal-content {
+  padding: 8px 20px 20px;
+  overflow-y: auto;
+}
+.morning-modal-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--color-ink);
+  margin: 8px 0 6px;
+  text-align: center;
+}
+.morning-modal-desc {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+.morning-modal-hint {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-bottom: 16px;
+}
+.morning-modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.morning-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-appearance: none;
+  border: none;
+}
+.morning-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.morning-btn-test {
+  background: var(--color-surface-alt);
+  color: var(--color-text-primary);
+  border: 0.5px solid var(--color-border);
+}
+.morning-btn-save {
+  background: var(--color-sage-deep);
+  color: #fff;
+}
+.morning-test-success {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  background: #eef6f3;
+  color: #3a7060;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+.morning-test-error {
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: var(--radius-sm);
+  background: #fdf0ee;
+  color: #b03020;
+  font-family: var(--font-ui);
+  font-size: 12px;
+}
+
+/* ── Payment Confirm Modal ────────────────────────────── */
+.payment-confirm-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.payment-confirm-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 16px 0;
+}
+.payment-undo-btn {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.payment-confirm-content {
+  padding: 0 20px 20px;
+  text-align: center;
+}
+.payment-confirm-icon {
+  margin: 8px auto 6px;
+}
+.payment-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.morning-btn-confirm-invoice {
+  background: var(--color-sage-deep);
+  color: #fff;
+}
+.morning-btn-skip {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  border: 0.5px solid var(--color-border);
+}
+
+/* ── Payment Filter Pill ─────────────────────────────── */
+.today-pill-payment-active {
+  background: #f3eef8;
+  border-color: #c8b8d8;
+}
+
+/* ── Price Prompt Modal ──────────────────────────────── */
+.price-modal {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.price-modal-content {
+  padding: 8px 20px 20px;
+}
+.price-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.price-input {
+  flex: 1;
+  text-align: center;
+  font-size: 24px !important;
+  font-weight: 500;
+}
+.price-currency {
+  font-family: var(--font-ui);
+  font-size: 20px;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+/* ── Invoice Flow Sheet ─────────────────────────────── */
+.invoice-flow-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 90dvh;
+  background: var(--color-surface);
+  border-radius: 20px 20px 0 0;
+  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+  animation: slideUp 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow-y: auto;
+}
+
+.iflow-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 0 4px;
+}
+.iflow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border);
+  transition: background 0.2s;
+}
+.iflow-dot-active {
+  background: var(--color-sage-deep);
+}
+.iflow-dot-done {
+  background: var(--color-sage-deep);
+}
+
+.iflow-step {
+  padding: 8px 20px 20px;
+  text-align: center;
+}
+
+.iflow-step-sending {
+  padding-top: 24px;
+  padding-bottom: 32px;
+}
+.iflow-spinner {
+  margin: 0 auto 12px;
+  width: 28px;
+  height: 28px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.iflow-success-icon {
+  margin: 4px auto 10px;
+}
+
+/* Invoice summary card */
+.iflow-invoice-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 12px;
+  text-align: right;
+}
+.iflow-invoice-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--color-sage-deep);
+  background: var(--color-sage-soft);
+  border: 0.5px solid var(--color-sage-mid);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+.iflow-invoice-header {
+  margin-bottom: 8px;
+}
+.iflow-invoice-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+.iflow-invoice-num {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+  direction: ltr;
+  text-align: right;
+}
+.iflow-invoice-divider {
+  height: 0.5px;
+  background: var(--color-border);
+  margin: 10px 0;
+}
+.iflow-invoice-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.iflow-invoice-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.iflow-invoice-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.iflow-invoice-value {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--color-text-primary);
+}
+.iflow-invoice-total {
+  padding-top: 2px;
+}
+.iflow-invoice-total .iflow-invoice-label,
+.iflow-invoice-total .iflow-invoice-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* ── Toast ───────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 90px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  z-index: 100;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s;
+  direction: rtl;
+}
+.toast-success {
+  background: #eef6f3;
+  color: #3a7060;
+  border: 0.5px solid #a8d0c8;
+}
+.toast-error {
+  background: #fdf0ee;
+  color: #b03020;
+  border: 0.5px solid #e0b0a8;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(20px); }
+}

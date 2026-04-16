@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import SessionNoteDrawer from "@/components/SessionNoteDrawer";
 import CalendarNavModal from "@/components/CalendarNavModal";
 import CalendarNavIcon from "@/components/CalendarNavIcon";
+import MorningSetupModal from "@/components/MorningSetupModal";
+import InvoiceFlowSheet from "@/components/InvoiceFlowSheet";
+import Toast, { showToast } from "@/components/Toast";
 import { formatHebDate, formatTime, DAY_NAMES } from "@/lib/utils";
 
 const PERIOD_LABELS = { morning: "בוקר", afternoon: "צהריים", evening: "ערב" };
@@ -32,12 +35,14 @@ function isBreakEvent(title) {
   return BREAK_KEYWORDS.some((kw) => title.toLowerCase().includes(kw.toLowerCase()));
 }
 
-function deriveStatus(event, patientMatch, sessionLookup) {
+function deriveStatus(event, patientMatch, sessionLookup, invoiceLookup) {
   if (!patientMatch?.id) return "new-client";
-  const isPast = new Date(event.end) < new Date();
-  if (!isPast) return "completed";
   const hasNote = sessionLookup.get(event.id);
-  return hasNote ? "completed" : "needs-note";
+  if (!hasNote) return "needs-note";
+  const inv = invoiceLookup.get(event.id);
+  if (inv?.invoiceSent) return "completed";
+  if (inv?.paid) return "needs-invoice";
+  return "needs-payment";
 }
 
 // ── Component ───────────────────────────────────────────
@@ -52,6 +57,24 @@ export default function TodayPage() {
   const [noteDrawerEvent, setNoteDrawerEvent] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Invoice flow state
+  const [morningModalOpen, setMorningModalOpen] = useState(false);
+  const [invoiceTarget, setInvoiceTarget] = useState(null); // { patientId, sessionId, price }
+  const [invoiceLookup, setInvoiceLookup] = useState(new Map()); // google_event_id → { invoiceSent, paid, sessionId }
+  const [sendingInvoice, setSendingInvoice] = useState(null); // sessionId being sent
+  const [suggestedPrice, setSuggestedPrice] = useState(null);
+  const [invoiceFlowOpen, setInvoiceFlowOpen] = useState(false);
+  const invoiceFlowOpenRef = useRef(false); // mirrors invoiceFlowOpen — safe to read inside async callbacks
+  // Wrapper that keeps the ref and state in sync
+  const setInvoiceFlowOpenSync = useCallback((val) => {
+    invoiceFlowOpenRef.current = val;
+    setInvoiceFlowOpen(val);
+  }, []);
+  const [invoiceFlowEvent, setInvoiceFlowEvent] = useState(null); // event for the flow sheet
+  const [invoiceFlowInitialStep, setInvoiceFlowInitialStep] = useState("confirm");
+  const [sendResult, setSendResult] = useState(null); // { success, invoiceId, price, warning }
+  const [practitionerName, setPractitionerName] = useState(null);
 
   const isToday = isSameDay(selectedDate, new Date());
 
@@ -114,7 +137,7 @@ export default function TodayPage() {
         supabase.from("patients").select("id, full_name, email, chief_complaint"),
         supabase
           .from("sessions")
-          .select("id, google_event_id, notes(id)")
+          .select("id, google_event_id, paid, invoice_sent, invoice_id, price, notes(id)")
           .not("google_event_id", "is", null),
       ]);
 
@@ -128,16 +151,24 @@ export default function TodayPage() {
       // Build lookup: google_event_id → hasNote
       // notes is an object (not array) due to unique constraint on session_id
       const lookup = new Map();
+      const invLookup = new Map();
       (sessionsData || []).forEach((s) => {
         if (s.google_event_id) {
           const hasNote = Array.isArray(s.notes) ? s.notes.length > 0 : !!s.notes?.id;
           lookup.set(s.google_event_id, hasNote);
+          invLookup.set(s.google_event_id, {
+            sessionId: s.id,
+            paid: !!s.paid,
+            invoiceSent: !!s.invoice_sent,
+            price: s.price,
+          });
         }
       });
 
       setEvents(calData.events || []);
       setPatients(patientList || []);
       setSessionLookup(lookup);
+      setInvoiceLookup(invLookup);
     } catch (err) {
       setError(err.message);
     }
@@ -155,7 +186,7 @@ export default function TodayPage() {
       setRefreshing(false);
       setPullDistance(0);
     });
-  }, [refreshing]);
+  }, [refreshing, fetchData]);
 
   // ── Patient matching ──────────────────────────────────
   const matchPatient = (event) => {
@@ -180,7 +211,7 @@ export default function TodayPage() {
       return { ...event, _type: "block" };
     }
     const patient = matchPatient(event);
-    const status = deriveStatus(event, patient, sessionLookup);
+    const status = deriveStatus(event, patient, sessionLookup, invoiceLookup);
     return { ...event, _type: "session", _status: status, _patient: patient };
   });
 
@@ -188,9 +219,11 @@ export default function TodayPage() {
   const sessions = enriched.filter((ev) => ev._type === "session");
   const intakeCount = sessions.filter((ev) => ev._status === "new-client").length;
   const noteCount = sessions.filter((ev) => ev._status === "needs-note").length;
+  const paymentCount = sessions.filter((ev) => ev._status === "needs-payment").length;
+  const invoiceCount = sessions.filter((ev) => ev._status === "needs-invoice").length;
   const doneCount = sessions.filter((ev) => ev._status === "completed").length;
   const totalSessions = sessions.length;
-  const actionNeededCount = intakeCount + noteCount;
+  const actionNeededCount = intakeCount + noteCount + paymentCount + invoiceCount;
 
   // ── Filter ────────────────────────────────────────────
   const filtered = statusFilter
@@ -198,6 +231,7 @@ export default function TodayPage() {
         if (ev._type !== "session") return false;
         if (statusFilter === "intake") return ev._status === "new-client";
         if (statusFilter === "note") return ev._status === "needs-note";
+        if (statusFilter === "payment") return ev._status === "needs-payment" || ev._status === "needs-invoice";
         if (statusFilter === "done") return ev._status === "completed";
         return true;
       })
@@ -232,6 +266,10 @@ export default function TodayPage() {
   const handleCardClick = (ev) => {
     if (ev._status === "completed" && ev._patient?.id) {
       router.push(`/patients/${ev._patient.id}`);
+    } else if (ev._status === "needs-payment" && ev._patient?.id) {
+      router.push(`/patients/${ev._patient.id}`);
+    } else if (ev._status === "needs-invoice" && ev._patient?.id) {
+      router.push(`/patients/${ev._patient.id}`);
     } else if (ev._status === "needs-note") {
       handleWriteNote(ev);
     } else if (ev._status === "new-client") {
@@ -258,6 +296,250 @@ export default function TodayPage() {
     const time = formatTime(ev.start);
     if (time) params.set("time", time);
     router.push(`/intake?${params.toString()}`);
+  };
+
+  // ── Payment flow ───────────────────────────────────────
+  const handleMarkAsPaid = async (ev) => {
+    const invInfo = invoiceLookup.get(ev.id);
+    if (!invInfo?.sessionId || !ev._patient?.id) return;
+
+    // Mark as paid in DB first
+    const marked = await doMarkPaid(ev);
+    if (!marked) return;
+
+    // Check if patient has email (required for invoice)
+    if (!ev._patient?.email) {
+      showToast("סומן כשולם. לא קיים מייל עבור מטופל זה — לא ניתן לשלוח חשבונית.", "error");
+      return;
+    }
+
+    // Check credentials before opening the flow
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: practitioner } = await supabase
+      .from("practitioners")
+      .select("morning_api_key_id, full_name, clinic_name")
+      .eq("id", user.id)
+      .single();
+
+    if (!practitioner?.morning_api_key_id) {
+      setInvoiceTarget({
+        patientId: ev._patient.id,
+        sessionId: invInfo.sessionId,
+        price: invInfo.price,
+        eventId: ev.id,
+      });
+      setMorningModalOpen(true);
+      return;
+    }
+
+    // Fetch suggested price if needed
+    if (!invInfo.price) {
+      await fetchSuggestedPrice(ev._patient.id);
+    }
+
+    setPractitionerName(practitioner.clinic_name || practitioner.full_name || null);
+    setSendResult(null);
+    setInvoiceFlowInitialStep("confirm");
+    setInvoiceFlowEvent(ev);
+    setInvoiceFlowOpenSync(true);
+  };
+
+  const handleFlowJustMark = () => {
+    // Already marked as paid in handleMarkAsPaid — just close
+    setInvoiceFlowOpenSync(false);
+    setInvoiceFlowEvent(null);
+  };
+
+  const handleFlowSendInvoice = async (priceValue) => {
+    const ev = invoiceFlowEvent;
+    if (!ev) return;
+    const invInfo = invoiceLookup.get(ev.id);
+    if (!invInfo?.sessionId || !ev._patient?.id) return;
+    await doSendInvoice(ev._patient.id, invInfo.sessionId, priceValue, ev.id);
+  };
+
+  const handleFlowClose = () => {
+    setInvoiceFlowOpenSync(false);
+    setInvoiceFlowEvent(null);
+    setSendResult(null);
+  };
+
+  // Returns true on success, false on failure.
+  const doMarkPaid = async (ev) => {
+    const invInfo = invoiceLookup.get(ev.id);
+    if (!invInfo?.sessionId) return false;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("sessions")
+      .update({ paid: true })
+      .eq("id", invInfo.sessionId);
+
+    if (error) {
+      showToast("שגיאה בסימון התשלום. יש לנסות שוב.", "error");
+      return false;
+    }
+
+    // Update local state only after confirmed DB write
+    setInvoiceLookup((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(ev.id) || {};
+      next.set(ev.id, { ...existing, paid: true });
+      return next;
+    });
+    return true;
+  };
+
+  // ── Invoice flow ──────────────────────────────────────
+  const fetchSuggestedPrice = async (patientId) => {
+    const supabase = createClient();
+    // 1. Check this patient's last session price
+    const { data: patientSession } = await supabase
+      .from("sessions")
+      .select("price")
+      .eq("patient_id", patientId)
+      .not("price", "is", null)
+      .order("date", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (patientSession?.price) {
+      setSuggestedPrice(patientSession.price);
+      return;
+    }
+
+    // 2. Fall back to practitioner's most recent invoiced price
+    const { data: anySession } = await supabase
+      .from("sessions")
+      .select("price")
+      .not("price", "is", null)
+      .order("date", { ascending: false })
+      .limit(1)
+      .single();
+
+    setSuggestedPrice(anySession?.price || null);
+  };
+
+  const handleSendInvoice = async (ev) => {
+    const invInfo = invoiceLookup.get(ev.id);
+    if (!invInfo?.sessionId || !ev._patient?.id) return;
+
+    // Check if patient has email
+    if (!ev._patient?.email) {
+      showToast("לא קיים מייל עבור מטופל זה. יש להוסיף מייל בפרופיל המטופל.", "error");
+      return;
+    }
+
+    // Check if practitioner has Morning credentials
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: practitioner } = await supabase
+      .from("practitioners")
+      .select("morning_api_key_id, full_name, clinic_name")
+      .eq("id", user.id)
+      .single();
+
+    if (!practitioner?.morning_api_key_id) {
+      setInvoiceTarget({
+        patientId: ev._patient.id,
+        sessionId: invInfo.sessionId,
+        price: invInfo.price,
+        eventId: ev.id,
+      });
+      setMorningModalOpen(true);
+      return;
+    }
+
+    setPractitionerName(practitioner.clinic_name || practitioner.full_name || null);
+    setSendResult(null);
+
+    // Always show price step — pre-populated if price exists, otherwise fetch suggestion
+    if (!invInfo.price) {
+      await fetchSuggestedPrice(ev._patient.id);
+    }
+    setInvoiceFlowInitialStep("price");
+    setInvoiceFlowEvent(ev);
+    setInvoiceFlowOpenSync(true);
+  };
+
+  const handleMorningSaved = async () => {
+    setMorningModalOpen(false);
+    if (!invoiceTarget) return;
+    // After saving credentials, open the invoice flow sheet
+    if (!invoiceTarget.price) {
+      await fetchSuggestedPrice(invoiceTarget.patientId);
+    }
+    // Re-fetch practitioner name
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: prac } = await supabase
+      .from("practitioners")
+      .select("full_name, clinic_name")
+      .eq("id", user.id)
+      .single();
+    setPractitionerName(prac?.clinic_name || prac?.full_name || null);
+
+    // Find the event that matches this invoiceTarget
+    const ev = enriched.find((e) => e.id === invoiceTarget.eventId);
+    setSendResult(null);
+    setInvoiceFlowInitialStep("price");
+    setInvoiceFlowEvent(ev || null);
+    setInvoiceFlowOpenSync(true);
+  };
+
+  const doSendInvoice = async (patientId, sessionId, price, eventId) => {
+    setSendingInvoice(sessionId);
+    setSendResult(null);
+    try {
+      const res = await fetch("/api/morning/send-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, sessionId, price }),
+      });
+
+      if (res.ok || res.status === 409) {
+        const data = await res.json().catch(() => null);
+        const isDuplicate = res.status === 409;
+        // Update local state so card reflects sent status
+        setInvoiceLookup((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(eventId) || {};
+          next.set(eventId, { ...existing, sessionId, invoiceSent: true, price });
+          return next;
+        });
+        // If flow sheet is open, show confirmation step; otherwise toast
+        if (invoiceFlowOpenRef.current) {
+          setSendResult({
+            success: true,
+            invoiceId: data?.invoiceId,
+            price,
+            // Surface the duplicate-invoice message as a warning so the user understands
+            warning: isDuplicate ? (data?.error || "החשבונית כבר נשלחה קודם לכן.") : (data?.warning || null),
+          });
+        } else {
+          const msg = isDuplicate
+            ? (data?.error || "החשבונית כבר נשלחה קודם לכן.")
+            : (data?.warning || "החשבונית נשלחה בהצלחה");
+          showToast(msg, isDuplicate || data?.warning ? "error" : "success");
+        }
+      } else {
+        const data = await res.json();
+        if (data.error === "MISSING_CREDENTIALS") {
+          setInvoiceTarget({ patientId, sessionId, price, eventId });
+          setInvoiceFlowOpenSync(false);
+          setMorningModalOpen(true);
+        } else {
+          showToast(data.error || "שגיאה בשליחת החשבונית", "error");
+          setInvoiceFlowOpenSync(false);
+        }
+      }
+    } catch {
+      showToast("לא ניתן להתחבר למורנינג כרגע. יש לנסות שוב.", "error");
+      setInvoiceFlowOpenSync(false);
+    }
+    setSendingInvoice(null);
+    setInvoiceTarget(null);
   };
 
   // ── Render ────────────────────────────────────────────
@@ -298,7 +580,7 @@ export default function TodayPage() {
       </header>
 
       {/* ── Filter Pills (§4) ──────────────────────────── */}
-      {!loading && (intakeCount > 0 || noteCount > 0 || doneCount > 0) && (
+      {!loading && (intakeCount > 0 || noteCount > 0 || doneCount > 0 || paymentCount > 0 || invoiceCount > 0) && (
         <div className="today-pills-wrapper">
           <div className="today-pills-row">
             {intakeCount > 0 && (
@@ -317,6 +599,15 @@ export default function TodayPage() {
               >
                 <span className="today-pill-num" style={{ color: "#c07088" }}>{noteCount}</span>
                 <span className="today-pill-label">סיכום</span>
+              </button>
+            )}
+            {(paymentCount + invoiceCount) > 0 && (
+              <button
+                className={`today-pill${statusFilter === "payment" ? " today-pill-active today-pill-payment-active" : ""}`}
+                onClick={() => toggleFilter("payment")}
+              >
+                <span className="today-pill-num" style={{ color: "#6a4888" }}>{paymentCount + invoiceCount}</span>
+                <span className="today-pill-label">תשלום</span>
               </button>
             )}
             {doneCount > 0 && (
@@ -410,7 +701,7 @@ export default function TodayPage() {
                     </div>
                   );
                 }
-                /* ── Completed Session (§6) ────────────── */
+                /* ── Completed Session — invoice sent (GREEN) ── */
                 if (ev._status === "completed") {
                   return (
                     <div
@@ -433,29 +724,48 @@ export default function TodayPage() {
                     </div>
                   );
                 }
-                /* ── Actionable Session (§5) ───────────── */
-                return (
-                  <div className="today-card" key={ev.id}>
-                    <div className="today-card-row" onClick={() => handleCardClick(ev)} style={{ cursor: "pointer" }}>
-                      <div className="today-card-time">{formatTime(ev.start)}</div>
-                      <div className="today-card-divider" />
-                      <div className="today-card-content">
-                        <div className="today-card-name">{ev._patient?.full_name || ev.title}</div>
-                        <div className="today-card-meta">{ev.duration} דק׳</div>
+                /* ── Actionable Session — all non-completed states ── */
+                {
+                  const invInfo = invoiceLookup.get(ev.id);
+                  const isSending = sendingInvoice === invInfo?.sessionId;
+
+                  return (
+                    <div className="today-card" key={ev.id}>
+                      <div className="today-card-row" onClick={() => handleCardClick(ev)} style={{ cursor: "pointer" }}>
+                        <div className="today-card-time">{formatTime(ev.start)}</div>
+                        <div className="today-card-divider" />
+                        <div className="today-card-content">
+                          <div className="today-card-name">{ev._patient?.full_name || ev.title}</div>
+                          <div className="today-card-meta">{ev.duration} דק׳</div>
+                        </div>
                       </div>
+                      {ev._status === "new-client" && (
+                        <button className="today-cta today-cta-intake" onClick={(e) => { e.stopPropagation(); handleStartIntake(ev); }}>
+                          התחל אינטייק
+                        </button>
+                      )}
+                      {ev._status === "needs-note" && (
+                        <button className="today-cta today-cta-note" onClick={(e) => { e.stopPropagation(); handleWriteNote(ev); }}>
+                          כתוב סיכום
+                        </button>
+                      )}
+                      {ev._status === "needs-payment" && (
+                        <button className="today-cta today-cta-payment" onClick={(e) => { e.stopPropagation(); handleMarkAsPaid(ev); }}>
+                          סמן כשולם
+                        </button>
+                      )}
+                      {ev._status === "needs-invoice" && (
+                        <button
+                          className="today-cta today-cta-invoice"
+                          onClick={(e) => { e.stopPropagation(); handleSendInvoice(ev); }}
+                          disabled={isSending}
+                        >
+                          {isSending ? "שולח..." : "שלח חשבונית"}
+                        </button>
+                      )}
                     </div>
-                    {ev._status === "new-client" && (
-                      <button className="today-cta today-cta-intake" onClick={(e) => { e.stopPropagation(); handleStartIntake(ev); }}>
-                        התחל אינטייק
-                      </button>
-                    )}
-                    {ev._status === "needs-note" && (
-                      <button className="today-cta today-cta-note" onClick={(e) => { e.stopPropagation(); handleWriteNote(ev); }}>
-                        כתוב סיכום
-                      </button>
-                    )}
-                  </div>
-                );
+                  );
+                }
               })}
             </div>
           ))
@@ -476,6 +786,29 @@ export default function TodayPage() {
         onSelectDate={setSelectedDate}
         sessionDates={sessionDates}
       />
+
+      <MorningSetupModal
+        open={morningModalOpen}
+        onClose={() => { setMorningModalOpen(false); setInvoiceTarget(null); }}
+        onSaved={handleMorningSaved}
+      />
+
+      <InvoiceFlowSheet
+        open={invoiceFlowOpen}
+        onClose={handleFlowClose}
+        onJustMark={handleFlowJustMark}
+        onSendInvoice={handleFlowSendInvoice}
+        initialStep={invoiceFlowInitialStep}
+        defaultPrice={invoiceFlowEvent ? (invoiceLookup.get(invoiceFlowEvent.id)?.price || suggestedPrice) : suggestedPrice}
+        patientName={invoiceFlowEvent?._patient?.full_name || ""}
+        patientEmail={invoiceFlowEvent?._patient?.email || ""}
+        practitionerName={practitionerName}
+        sessionDate={invoiceFlowEvent ? formatHebDate(new Date(invoiceFlowEvent.start)) : ""}
+        sending={!!sendingInvoice}
+        sendResult={sendResult}
+      />
+
+      <Toast />
     </div>
   );
 }
