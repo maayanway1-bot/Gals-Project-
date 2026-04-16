@@ -80,9 +80,38 @@ async function resolveMorningClientId(token, patient, supabase) {
     return mockClientId;
   }
 
-  // Always create a new client in Morning to avoid wrong-client matches.
-  // Morning's /clients/search is fuzzy and can return unrelated clients,
-  // which would attach an invoice to the wrong person.
+  // Search for existing client by exact email field
+  const searchRes = await safeFetch(`${MORNING_BASE_URL}/clients/search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ email: patient.email, page: 1, pageSize: 20 }),
+  });
+
+  if (searchRes.ok) {
+    let searchData;
+    try {
+      searchData = await searchRes.json();
+    } catch { /* malformed JSON — treat as not found, proceed to create */ }
+
+    const items = searchData?.items || [];
+    // Verify the returned client actually has a matching email
+    const match = items.find((c) =>
+      Array.isArray(c.emails) && c.emails.some((e) => e.toLowerCase() === patient.email.toLowerCase())
+    );
+    if (match?.id) {
+      const clientId = String(match.id);
+      await supabase
+        .from("patients")
+        .update({ morning_client_id: clientId })
+        .eq("id", patient.id);
+      return clientId;
+    }
+  }
+
+  // Not found — create new client
   const createRes = await safeFetch(`${MORNING_BASE_URL}/clients`, {
     method: "POST",
     headers: {
@@ -233,16 +262,18 @@ export async function POST(request) {
       return NextResponse.json({ error: errorToMessage(code) }, { status });
     }
 
-    // 4. Create Morning client (always create fresh to avoid wrong-client matches)
-    let morningClientId;
-    try {
-      morningClientId = await resolveMorningClientId(token, patient, supabase);
-    } catch (err) {
-      logInvoiceError("resolve_client", { code: err?.message, patientId, patientEmail: patient.email, sessionId });
-      return NextResponse.json(
-        { error: errorToMessage(err?.message) },
-        { status: 502 }
-      );
+    // 4. Resolve Morning client ID (use cached if available, otherwise search/create)
+    let morningClientId = patient.morning_client_id;
+    if (!morningClientId) {
+      try {
+        morningClientId = await resolveMorningClientId(token, patient, supabase);
+      } catch (err) {
+        logInvoiceError("resolve_client", { code: err?.message, patientId, patientEmail: patient.email, sessionId });
+        return NextResponse.json(
+          { error: errorToMessage(err?.message) },
+          { status: 502 }
+        );
+      }
     }
 
     // 5. Save price to session
