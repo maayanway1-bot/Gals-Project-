@@ -2045,6 +2045,32 @@ input[type="range"]::-webkit-slider-thumb {
   text-align: center;
 }
 
+.iflow-service-toggle {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.iflow-service-btn {
+  flex: 1;
+  max-width: 140px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.iflow-service-btn-active {
+  border-color: var(--color-sage-deep);
+  background: var(--color-sage-soft);
+  color: var(--color-sage-deep);
+  font-weight: 600;
+}
+
 .iflow-step-sending {
   padding-top: 24px;
   padding-bottom: 32px;

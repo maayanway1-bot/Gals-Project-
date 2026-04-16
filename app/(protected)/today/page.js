@@ -351,12 +351,14 @@ export default function TodayPage() {
     setInvoiceFlowEvent(null);
   };
 
-  const handleFlowSendInvoice = async (priceValue) => {
+  const handleFlowSendInvoice = async (priceValue, serviceType) => {
     const ev = invoiceFlowEvent;
     if (!ev) return;
     const invInfo = invoiceLookup.get(ev.id);
     if (!invInfo?.sessionId || !ev._patient?.id) return;
-    await doSendInvoice(ev._patient.id, invInfo.sessionId, priceValue, ev.id);
+    // Pass session date as YYYY-MM-DD for the invoice document date
+    const sessionDateISO = ev.start ? new Date(ev.start).toISOString().slice(0, 10) : undefined;
+    await doSendInvoice(ev._patient.id, invInfo.sessionId, priceValue, ev.id, serviceType, sessionDateISO);
   };
 
   const handleFlowClose = () => {
@@ -488,14 +490,14 @@ export default function TodayPage() {
     setInvoiceFlowOpenSync(true);
   };
 
-  const doSendInvoice = async (patientId, sessionId, price, eventId) => {
+  const doSendInvoice = async (patientId, sessionId, price, eventId, serviceType, sessionDateISO) => {
     setSendingInvoice(sessionId);
     setSendResult(null);
     try {
       const res = await fetch("/api/morning/send-invoice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, sessionId, price }),
+        body: JSON.stringify({ patientId, sessionId, price, serviceType, sessionDate: sessionDateISO }),
       });
 
       if (res.ok || res.status === 409) {
@@ -514,6 +516,7 @@ export default function TodayPage() {
             success: true,
             invoiceId: data?.invoiceId,
             price,
+            serviceType,
             // Surface the duplicate-invoice message as a warning so the user understands
             warning: isDuplicate ? (data?.error || "החשבונית כבר נשלחה קודם לכן.") : (data?.warning || null),
           });

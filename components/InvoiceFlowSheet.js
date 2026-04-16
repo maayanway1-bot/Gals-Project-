@@ -4,6 +4,11 @@ import { useState, useEffect, useRef } from "react";
 
 const STEPS = { CONFIRM: 0, PRICE: 1, SENDING: 2, SUCCESS: 3 };
 
+const SERVICE_TYPES = [
+  { value: "דיקור", label: "דיקור" },
+  { value: "שיאצו", label: "שיאצו" },
+];
+
 export default function InvoiceFlowSheet({
   open,
   onClose,
@@ -20,6 +25,7 @@ export default function InvoiceFlowSheet({
 }) {
   const [step, setStep] = useState(STEPS.CONFIRM);
   const [price, setPrice] = useState("");
+  const [serviceType, setServiceType] = useState(SERVICE_TYPES[0].value);
   const inputRef = useRef(null);
 
   // Reset when opened/closed
@@ -31,6 +37,7 @@ export default function InvoiceFlowSheet({
         : STEPS.CONFIRM;
       setStep(startStep);
       setPrice(defaultPrice ? String(defaultPrice) : "");
+      setServiceType(SERVICE_TYPES[0].value);
     } else {
       document.body.style.overflow = "";
       setPrice("");
@@ -72,7 +79,7 @@ export default function InvoiceFlowSheet({
     if (num > 0) {
       // Let the parent's `sending` prop drive the step transition via the useEffect below.
       // Do not set SENDING here to avoid a double-transition race.
-      onSendInvoice(num);
+      onSendInvoice(num, serviceType);
     }
   };
 
@@ -127,8 +134,21 @@ export default function InvoiceFlowSheet({
         {/* ── Step 2: Price entry ── */}
         {step === STEPS.PRICE && (
           <div className="iflow-step">
-            <h3 className="morning-modal-title">מחיר הטיפול</h3>
-            <p className="morning-modal-desc">יש להזין את מחיר הטיפול לחשבונית</p>
+            <h3 className="morning-modal-title">פרטי הטיפול</h3>
+            <p className="morning-modal-desc">יש לבחור סוג טיפול ולהזין מחיר</p>
+
+            <div className="iflow-service-toggle">
+              {SERVICE_TYPES.map((st) => (
+                <button
+                  key={st.value}
+                  className={`iflow-service-btn${serviceType === st.value ? " iflow-service-btn-active" : ""}`}
+                  onClick={() => setServiceType(st.value)}
+                  type="button"
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
 
             <div className="price-input-row">
               <input
@@ -228,7 +248,7 @@ export default function InvoiceFlowSheet({
 
               <div className="iflow-invoice-rows">
                 <div className="iflow-invoice-row">
-                  <span className="iflow-invoice-label">טיפול דיקור</span>
+                  <span className="iflow-invoice-label">טיפול {sendResult.serviceType || serviceType}</span>
                   <span className="iflow-invoice-value">₪{(priceNum / 1.18).toFixed(2)}</span>
                 </div>
                 <div className="iflow-invoice-row">

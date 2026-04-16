@@ -176,7 +176,11 @@ export async function POST(request) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { patientId, sessionId, price } = body || {};
+    const { patientId, sessionId, price, serviceType, sessionDate: rawSessionDate } = body || {};
+
+    // Validate sessionDate format (YYYY-MM-DD) if provided
+    const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    const sessionDate = rawSessionDate && ISO_DATE_RE.test(rawSessionDate) ? rawSessionDate : undefined;
 
     if (!patientId || !sessionId || !price || typeof price !== "number" || price <= 0) {
       return NextResponse.json(
@@ -289,12 +293,20 @@ export async function POST(request) {
             lang: "he",
             currency: "ILS",
             vatType: 0,
+            ...(sessionDate ? { date: sessionDate } : {}),
             client: { id: morningClientId },
             income: [
               {
-                description: "טיפול דיקור",
+                description: `טיפול ${serviceType || "דיקור"}`,
                 quantity: 1,
                 price,
+              },
+            ],
+            payment: [
+              {
+                type: 4, // Paybox (electronic payment)
+                price,
+                ...(sessionDate ? { date: sessionDate } : {}),
               },
             ],
           }),
