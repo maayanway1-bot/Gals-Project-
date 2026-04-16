@@ -304,7 +304,7 @@ export async function POST(request) {
             type: 320, // חשבונית מס קבלה — combined invoice + receipt, correct for עוסק מורשה who collects payment at time of service
             lang: "he",
             currency: "ILS",
-            vatType: 0,
+            vatType: 1, // price includes VAT (כולל מע"מ)
             ...(sessionDate ? { date: sessionDate } : {}),
             client: { id: morningClientId },
             income: [
