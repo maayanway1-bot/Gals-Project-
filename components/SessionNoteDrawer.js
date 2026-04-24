@@ -91,6 +91,15 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
   const wakeLockRef = useRef(null);
   const lastBlobRef = useRef(null);
   const formulaPresetsRef = useRef([]);
+  // Live waveform
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const sourceNodeRef = useRef(null);
+  const waveformAnimRef = useRef(null);
+  const canvasRef = useRef(null);
+  // Tracks the setTimeout that flips "done" → "idle" so we can cancel it
+  // on drawer close / unmount.
+  const doneTimerRef = useRef(null);
 
   // Load formula presets for AI context
   useEffect(() => {
@@ -104,13 +113,20 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
     loadPresets();
   }, []);
 
-  // Reset dictation state when drawer opens
+  // Reset dictation state when drawer opens; clean up on close.
   useEffect(() => {
     if (open) {
       setDictationState("idle");
       setElapsedSeconds(0);
       setShowAiHint(false);
       setHighlightedFields(new Set());
+    } else {
+      // Closing: release mic, close AudioContext, cancel any pending done→idle timer.
+      teardownWaveform();
+      if (doneTimerRef.current) {
+        clearTimeout(doneTimerRef.current);
+        doneTimerRef.current = null;
+      }
     }
   }, [open]);
 
@@ -145,6 +161,89 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [dictationState]);
+
+  // --- Live waveform (Web Audio API) ---
+  function setupWaveform(stream) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.3;
+      source.connect(analyser); // not connected to destination — no echo
+      audioContextRef.current = ctx;
+      analyserRef.current = analyser;
+      sourceNodeRef.current = source;
+    } catch { /* waveform is optional polish — silent on failure */ }
+  }
+
+  function startWaveform() {
+    const analyser = analyserRef.current;
+    if (!analyser) return;
+    const bufferLength = analyser.fftSize;
+    const dataArray = new Uint8Array(bufferLength);
+    const draw = () => {
+      waveformAnimRef.current = requestAnimationFrame(draw);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (w <= 0 || h <= 0) return;
+      const needW = Math.floor(w * dpr);
+      const needH = Math.floor(h * dpr);
+      if (canvas.width !== needW) canvas.width = needW;
+      if (canvas.height !== needH) canvas.height = needH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      analyser.getByteTimeDomainData(dataArray);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "#E03030";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      const sliceWidth = w / bufferLength;
+      const GAIN = 4; // amplify deviation from centerline so normal speech is visible
+      let x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0; // 1.0 at silence, 0–2 range
+        const amplified = 1 + (v - 1) * GAIN;
+        const clamped = Math.max(0, Math.min(2, amplified));
+        const y = (clamped * h) / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+        x += sliceWidth;
+      }
+      ctx.stroke();
+    };
+    draw();
+  }
+
+  function stopWaveformAnimation() {
+    if (waveformAnimRef.current) {
+      cancelAnimationFrame(waveformAnimRef.current);
+      waveformAnimRef.current = null;
+    }
+  }
+
+  function teardownWaveform() {
+    stopWaveformAnimation();
+    try { sourceNodeRef.current?.disconnect(); } catch {}
+    try { analyserRef.current?.disconnect(); } catch {}
+    try { audioContextRef.current?.close(); } catch {}
+    sourceNodeRef.current = null;
+    analyserRef.current = null;
+    audioContextRef.current = null;
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
 
   async function acquireWakeLock() {
     try {
@@ -188,6 +287,8 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
       setElapsedSeconds(0);
       setDictationState("recording");
       setShowAiHint(false);
+      setupWaveform(stream);
+      startWaveform();
       acquireWakeLock();
     } catch (err) {
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -204,6 +305,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.pause();
       setDictationState("paused");
+      stopWaveformAnimation(); // freeze wave on last frame
     }
   }
 
@@ -211,11 +313,13 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
     if (mediaRecorderRef.current?.state === "paused") {
       mediaRecorderRef.current.resume();
       setDictationState("recording");
+      startWaveform();
     }
   }
 
   async function stopRecording() {
     releaseWakeLock();
+    teardownWaveform();
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
 
@@ -225,7 +329,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
         originalOnStop?.(e);
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
 
-        if (blob.size < 1000 || elapsedRef.current < 1) {
+        if (blob.size < 1000 || elapsedRef.current < 4) {
           showToast("ההקלטה קצרה מדי — נסי שוב", "error");
           setDictationState("idle");
           resolve();
@@ -259,10 +363,37 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
       }
 
       const data = await res.json();
+
+      // If Gemini returned all-null text fields and no usable formulas, the
+      // recording didn't have enough content to structure. Surface as a yellow
+      // warning and reset to idle — retrying the same audio won't help.
+      const textFields = [
+        data.client_report, data.tongue_and_pulse, data.treatment_done,
+        data.treatment_plan, data.homework,
+      ];
+      const hasText = textFields.some((v) => typeof v === "string" && v.trim() !== "");
+      const presets = formulaPresetsRef.current;
+      const hasMatchedFormula = Array.isArray(data.formulas) && data.formulas.some((f) =>
+        presets.some((p) => p.toLowerCase() === f.toLowerCase())
+      );
+
+      if (!hasText && !hasMatchedFormula) {
+        lastBlobRef.current = null;
+        showToast("לא נמצא תוכן מספיק בהקלטה — הסיכום לא נוצר", "warning");
+        setDictationState("idle");
+        return;
+      }
+
       populateFields(data);
       lastBlobRef.current = null; // success — discard audio
       setDictationState("done");
       setShowAiHint(true);
+      // V is a transient success beacon: bounce in, dwell ~2s, auto-revert to mic.
+      if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+      doneTimerRef.current = setTimeout(() => {
+        setDictationState((s) => (s === "done" ? "idle" : s));
+        doneTimerRef.current = null;
+      }, 2500);
     } catch (err) {
       console.error("[dictation] Failed:", err);
       showToast("לא הצלחנו לעבד את ההקלטה — לחצי לנסות שוב", "error");
@@ -328,6 +459,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
 
   function discardRecording() {
     releaseWakeLock();
+    teardownWaveform();
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== "inactive") {
       recorder.onstop = () => {
@@ -343,6 +475,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
   }
 
   function resetDictation() {
+    teardownWaveform(); // idempotent — safe even if already torn down
     lastBlobRef.current = null;
     setDictationState("idle");
     setElapsedSeconds(0);
@@ -567,10 +700,11 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
           {isRecordingActive && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
               {/* Pause/Resume button — first in DOM = right in RTL */}
+              {/* 56×56 > 44pt HIG minimum — comfortable hit target during active talking */}
               <button
                 onClick={dictationState === "recording" ? pauseRecording : resumeRecording}
                 style={{
-                  width: 50, height: 50, minWidth: 50, borderRadius: 12,
+                  width: 56, height: 56, borderRadius: 14,
                   border: "1.5px solid #E03030", background: "#FFF0F0",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   cursor: "pointer", padding: 0,
@@ -594,7 +728,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
                 <button
                   onClick={stopRecording}
                   style={{
-                    width: 50, height: 50, minWidth: 50, borderRadius: 12,
+                    width: 56, height: 56, borderRadius: 14,
                     border: "1.5px solid #E03030", background: "#E03030",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer", padding: 0,
@@ -609,7 +743,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
                 <button
                   onClick={discardRecording}
                   style={{
-                    width: 50, height: 50, minWidth: 50, borderRadius: 12,
+                    width: 56, height: 56, borderRadius: 14,
                     border: "1.5px solid #999", background: "#f5f5f5",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     cursor: "pointer", padding: 0,
@@ -626,8 +760,23 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
                 </button>
               )}
 
+              {/* Live waveform canvas — DOM between stop and timer,
+                  visually (RTL) sits between stop on its right and timer on its left */}
+              <canvas
+                ref={canvasRef}
+                style={{
+                  flex: 1,
+                  minWidth: 40,
+                  height: 36,
+                  display: "block",
+                  opacity: dictationState === "paused" ? 0.35 : 1,
+                  transition: "opacity 0.2s ease",
+                }}
+                aria-hidden="true"
+              />
+
               {/* Pulsing dot + timer — last in DOM = left in RTL */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                 <span style={{
                   fontVariantNumeric: "tabular-nums", color: "#C02020",
                   fontSize: 15, fontWeight: 500,
@@ -664,6 +813,7 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
                 border: "1.5px solid #7AB870", background: "#EEF7EC",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 cursor: "pointer", padding: 0,
+                animation: "dictDoneAppear 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)",
               }}
               aria-label="אפס הכתבה"
             >
@@ -674,42 +824,67 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
           )}
 
           {dictationState === "error" && (
-            <button
-              onClick={retryDictation}
-              style={{
-                width: 50, height: 50, minWidth: 50, borderRadius: 12,
-                border: "1.5px solid #E03030", background: "#FFF0F0",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", padding: 0,
-              }}
-              aria-label="נסי שוב"
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 4v6h6" />
-                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-              </svg>
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Retry — first in DOM = right in RTL */}
+              <button
+                onClick={retryDictation}
+                style={{
+                  width: 50, height: 50, minWidth: 50, borderRadius: 12,
+                  border: "1.5px solid #E03030", background: "#FFF0F0",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", padding: 0,
+                }}
+                aria-label="נסי שוב"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E03030" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4v6h6" />
+                  <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+              {/* Discard — last in DOM = left of retry in RTL. Clears the failed blob
+                  and returns to idle so she can start a fresh dictation. */}
+              <button
+                onClick={resetDictation}
+                style={{
+                  width: 50, height: 50, minWidth: 50, borderRadius: 12,
+                  border: "1.5px solid #999", background: "#f5f5f5",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", padding: 0,
+                }}
+                aria-label="מחק הקלטה"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </svg>
+              </button>
+            </div>
           )}
 
-          {/* Save button — last in DOM = left side in RTL */}
-          <div
-            onClick={hasAnyText && !saving && !isDictationBusy ? handleSave : undefined}
-            style={{
-              background: "#eef6f3", color: "#3a7060", border: "0.5px solid #a8d0c8",
-              fontSize: "14px", fontWeight: 500, borderRadius: "12px", padding: "14px 0",
-              flex: isRecordingActive ? undefined : 1,
-              maxWidth: isRecordingActive ? 70 : undefined,
-              width: isRecordingActive ? 70 : undefined,
-              textAlign: "center",
-              cursor: hasAnyText && !saving && !isDictationBusy ? "pointer" : "default",
-              opacity: hasAnyText && !saving && !isDictationBusy ? 1 : 0.3,
-              pointerEvents: hasAnyText && !saving && !isDictationBusy ? "auto" : "none",
-              fontFamily: "var(--font-ui)",
-              transition: "max-width 0.3s ease, opacity 0.3s ease",
-            }}
-          >
-            {saving ? "שומר..." : "שמור"}
-          </div>
+          {/* Save button — last in DOM = left side in RTL.
+              Hidden while recording or paused so the timer fills the left end of the bar
+              and the practitioner can't miss-tap save mid-sentence. */}
+          {!isRecordingActive && (
+            <div
+              onClick={hasAnyText && !saving && !isDictationBusy ? handleSave : undefined}
+              style={{
+                background: "#eef6f3", color: "#3a7060", border: "0.5px solid #a8d0c8",
+                fontSize: "14px", fontWeight: 500, borderRadius: "12px", padding: "14px 0",
+                flex: 1,
+                textAlign: "center",
+                cursor: hasAnyText && !saving && !isDictationBusy ? "pointer" : "default",
+                opacity: hasAnyText && !saving && !isDictationBusy ? 1 : 0.3,
+                pointerEvents: hasAnyText && !saving && !isDictationBusy ? "auto" : "none",
+                fontFamily: "var(--font-ui)",
+                transition: "opacity 0.3s ease",
+              }}
+            >
+              {saving ? "שומר..." : "שמור"}
+            </div>
+          )}
         </div>
 
         {/* Dictation CSS animations + field highlights */}
@@ -720,6 +895,11 @@ export default function SessionNoteDrawer({ open, onClose, event, patient, sessi
           }
           @keyframes dictSpin {
             to { transform: rotate(360deg); }
+          }
+          @keyframes dictDoneAppear {
+            0%   { transform: scale(0.5); opacity: 0; }
+            60%  { transform: scale(1.12); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
           }
           .ai-highlight textarea,
           .ai-highlight .form-textarea {

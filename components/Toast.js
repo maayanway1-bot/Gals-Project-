@@ -26,7 +26,7 @@ export default function Toast() {
 
   useEffect(() => {
     if (!visible) return;
-    const duration = type === "error" ? 6000 : 3000;
+    const duration = type === "error" || type === "warning" ? 6000 : 3000;
     const timer = setTimeout(() => setVisible(false), duration);
     return () => clearTimeout(timer);
   }, [visible, type]);
@@ -45,6 +45,13 @@ export default function Toast() {
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
           <circle cx="8" cy="8" r="8" fill="#b03020"/>
           <path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      )}
+      {type === "warning" && (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+          <path d="M8 1.5L15 14H1L8 1.5Z" fill="#E0A020"/>
+          <path d="M8 6V10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="8" cy="12" r="1" fill="#fff"/>
         </svg>
       )}
       <span>{message}</span>
