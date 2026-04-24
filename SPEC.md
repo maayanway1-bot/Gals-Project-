@@ -19,6 +19,7 @@ Single user. Core loop: check today's appointments → open patient → write se
 | PWA | next-pwa — manifest.json + service worker |
 | RTL | `dir="auto"` on text inputs, CSS logical properties |
 | Invoicing | Morning (Green Invoice) API |
+| AI Dictation | Gemini 2.0 Flash (Google) |
 | Deployment | Vercel |
 
 ---
@@ -127,6 +128,7 @@ On save → Patient Profile
 - Tongue photo: optional, one per session — camera or library
   - Thumbnail shown inline once added, tap to remove / replace
 - Auto-saves draft every 5 seconds
+- Bottom sticky bar contains a Save button and a dictation icon button. Tapping the dictation button records audio, sends to `/api/ai/dictate-note`, and auto-populates note fields.
 - "Save" → commits session, increments session number
 - After save, one optional prompt:
   - "Schedule next appointment?" → opens Schedule Next Appointment
@@ -203,6 +205,7 @@ Each practitioner has their own Morning credentials in the `practitioners` table
 ## Auth & Security
 - Google OAuth via Supabase Auth
 - Single allowed user: `ALLOWED_EMAIL` env var, enforced at middleware
+- `GEMINI_API_KEY` — server-side only, for AI voice dictation via Gemini 2.0 Flash
 - Supabase RLS: all tables and storage scoped to authenticated user ID
 
 ---

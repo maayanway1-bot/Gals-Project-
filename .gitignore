@@ -24,6 +24,7 @@ out/
 
 # playwright
 .playwright-mcp/
+gallery/
 
 # supabase local
 supabase/.branches/

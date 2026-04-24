@@ -4,9 +4,10 @@ import { getValidAccessToken } from "@/lib/google-auth";
 
 function getMockEvents(localDate) {
   const base = `${localDate}T`;
+  const day = localDate.replace(/-/g, "");
   return [
     {
-      id: "mock-event-1",
+      id: `mock-${day}-1`,
       title: "רונית כהן",
       start: `${base}09:00:00+03:00`,
       end: `${base}09:45:00+03:00`,
@@ -14,7 +15,7 @@ function getMockEvents(localDate) {
       attendees: [{ email: "ronit@example.com", name: "רונית כהן" }],
     },
     {
-      id: "mock-event-2",
+      id: `mock-${day}-2`,
       title: "דני לוי",
       start: `${base}10:00:00+03:00`,
       end: `${base}10:45:00+03:00`,
@@ -22,7 +23,7 @@ function getMockEvents(localDate) {
       attendees: [{ email: "dani@example.com", name: "דני לוי" }],
     },
     {
-      id: "mock-event-3",
+      id: `mock-${day}-3`,
       title: "הפסקה",
       start: `${base}11:00:00+03:00`,
       end: `${base}11:30:00+03:00`,
@@ -30,7 +31,7 @@ function getMockEvents(localDate) {
       attendees: [],
     },
     {
-      id: "mock-event-4",
+      id: `mock-${day}-4`,
       title: "מיכל אברהם",
       start: `${base}12:00:00+03:00`,
       end: `${base}13:00:00+03:00`,
@@ -38,7 +39,7 @@ function getMockEvents(localDate) {
       attendees: [{ email: "michal@example.com", name: "מיכל אברהם" }],
     },
     {
-      id: "mock-event-5",
+      id: `mock-${day}-5`,
       title: "יוסי חדד",
       start: `${base}14:00:00+03:00`,
       end: `${base}14:45:00+03:00`,

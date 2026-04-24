@@ -359,6 +359,51 @@ Practitioners can send a legally signed invoice to a patient from the Today View
 
 ---
 
+## Phase 10 — AI Voice Dictation for Session Notes
+
+### Goal
+Practitioner can dictate a free-form Hebrew session summary and have AI populate the session note fields automatically.
+
+### Tasks
+- [ ] Add GEMINI_API_KEY to .env.local and production environment
+- [ ] Create POST /api/ai/dictate-note route (Gemini 2.0 Flash, server-side only)
+- [ ] Make Save button part of a sticky bottom bar in SessionNoteDrawer
+- [ ] Add dictation icon button (46×46px) to sticky bar
+- [ ] Implement four-state button: idle → recording → processing → done
+- [ ] MediaRecorder audio capture (WebM/Opus with MP4 fallback)
+- [ ] Screen Wake Lock during recording
+- [ ] visibilitychange pause handling
+- [ ] 4-minute auto-stop
+- [ ] Field population logic: null = skip, existing content = append with line break
+- [ ] Formula matching against existing presets
+- [ ] 3-second highlight fade on AI-populated fields
+- [ ] Error toast handling (mic denied, too short, API error)
+
+### Validation Checklist
+- [ ] Tapping idle button requests mic permission (not before)
+- [ ] Timer counts up correctly during recording
+- [ ] Pause/resume works — timer freezes when paused
+- [ ] Stop at 4 minutes triggers processing automatically
+- [ ] Switching apps mid-recording pauses; does not auto-resume on return
+- [ ] Screen does not auto-lock during recording
+- [ ] API key never appears in any client-side file or network request from browser
+- [ ] Audio blob is not logged or stored server-side after Gemini call
+- [ ] Patient name is not sent to Gemini — confirm by inspecting the request payload in network tab
+- [ ] Patient email is not sent to Gemini
+- [ ] No patient IDs (patient_id, session_id) are sent to Gemini
+- [ ] Server-side route does not log request body or chief complaint
+- [ ] Fields with content get AI output appended, not overwritten
+- [ ] Fields the AI returned null for are left untouched
+- [ ] AI-populated fields show highlight fade (3 seconds)
+- [ ] Formula names match existing presets case-insensitively
+- [ ] All three error toasts display correctly
+- [ ] Green checkmark tapped → resets to idle state correctly
+- [ ] Tested on real iOS device (Safari PWA)
+
+### Ship when: all checklist items pass on a real iOS device
+
+---
+
 ## Tips for working with Claude Code
 
 - **One phase at a time.** Don't ask it to build phases 3 and 4 together.
