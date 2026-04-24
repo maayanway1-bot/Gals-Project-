@@ -34,3 +34,4 @@ supabase/.temp/
 .claude/agent-memory/
 .claude/agents/
 .claude/worktrees/
+package-lock.json
