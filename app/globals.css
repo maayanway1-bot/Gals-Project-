@@ -2193,6 +2193,18 @@ input[type="range"]::-webkit-slider-thumb {
   color: #b03020;
   border: 0.5px solid #e0b0a8;
 }
+.toast-warning {
+  background: #FEF5CC;
+  color: #8A6A00;
+  border: 0.5px solid #E8CC6A;
+}
+/* Base .toast animation hides at 2.7s + 0.3s = 3s (matching success auto-dismiss).
+   Error/warning toasts auto-dismiss at 6s (see Toast.js), so delay the fade-out
+   to 5.7s + 0.3s = 6s to match. */
+.toast-warning,
+.toast-error {
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 5.7s;
+}
 
 @keyframes slideUp {
   from { transform: translateY(100%); }
